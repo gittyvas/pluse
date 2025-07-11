@@ -31,14 +31,10 @@
     *.tmp
     *.swp # Vim swap files
 
-    # Other temporary/generated files
-    /tmp/
-
-    # If you are using the FIREBASE_CONFIG environment variable,
-    # you should NOT track your actual serviceAccountKey.json file directly.
-    # If you are NOT using the env var and are reading the file directly,
-    # then you *do* need to track it.
-    # If you switch to env var, uncomment the line below:
+    # Firebase Admin SDK service account key
+    # IMPORTANT: If you are loading FIREBASE_CONFIG from an environment variable,
+    # then you should uncomment the lines below to IGNORE your serviceAccountKey.json file.
+    # If you are still loading it directly from the file, keep these commented out.
     # serviceAccountKey.json
     # pulse-crm-60584-firebase-adminsdk-fbsvc-f3c8a6ba53.json
-    
+        
