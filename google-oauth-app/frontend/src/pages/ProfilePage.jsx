@@ -30,49 +30,94 @@ const FooterLink = ({ label, path }) => {
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { isAuthenticated, currentUser, logout, disconnectGoogleAccount, deleteAccount, theme, toggleTheme } = useAuth();
+  const { isAuthenticated, currentUser, logout, user, theme, toggleTheme } = useAuth();
 
   // State for modals
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // State for notifications
+  // State for notifications - initialized with default values, will be updated by fetch
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState(null); // For notification feedback
 
-  // State for session management (dummy data for demonstration)
-  // In a real application, you would fetch these from your backend API
-  const [sessions, setSessions] = useState([
-    { id: 1, device: "Current Device (Chrome on Windows)", lastActive: "Just now" },
-    { id: 2, device: "Mobile (Safari on iOS)", lastActive: "2 days ago" },
-    { id: 3, device: "Desktop (Firefox on Linux)", lastActive: "1 week ago" },
-  ]);
+  // State for session management - initialized as empty, will be populated by backend if real sessions are managed.
+  const [sessions, setSessions] = useState([]);
   const [sessionMessage, setSessionMessage] = useState(null); // For session management feedback
 
-  // States for disconnect and delete messages (replacing alert())
+  // States for disconnect and delete messages
   const [disconnectMessage, setDisconnectMessage] = useState(null);
   const [deleteMessage, setDeleteMessage] = useState(null);
 
-
   // Define colors consistent with Home.jsx "Soft & Gradient" style
-  const bgColor = theme === 'dark' ? "#1A222A" : "#F8FBF8"; // Soft dark blue-grey / very light green-tinted white
-  const textColor = theme === 'dark' ? "#E0E6EB" : "#303030"; // Soft light grey / soft dark grey
-  const accentColor = "#4CAF50"; // Classic, slightly muted green
-  const cardBgColor = theme === 'dark' ? "linear-gradient(145deg, #2A343D, #1F2830)" : "linear-gradient(145deg, #FFFFFF, #F0F5F0)"; // Subtle gradients
+  const bgColor = theme === 'dark' ? "#1A222A" : "#F8FBF8";
+  const textColor = theme === 'dark' ? "#E0E6EB" : "#303030";
+  const accentColor = "#4CAF50";
+  const cardBgColor = theme === 'dark' ? "linear-gradient(145deg, #2A343D, #1F2830)" : "linear-gradient(145deg, #FFFFFF, #F0F5F0)";
   const cardBorderColor = theme === 'dark' ? "#3A454F" : "#E0E5E0";
   const mutedTextColor = theme === 'dark' ? "#A0A8B0" : "#606060";
   const headerBgColor = theme === 'dark' ? "#1A222A" : "#FFFFFF";
-  const headerBorderColor = theme === 'dark' ? "#3A454F" : "#E8EBE8";
+  const headerBorderColor = theme === 'dark' ? "#3A454F" : "#E8E8E8";
+
+  // Define your backend base URL from environment variable
+  // This environment variable MUST be set in your frontend's build process/hosting config
+  const BACKEND_API_BASE_URL = process.env.REACT_APP_BACKEND_API_BASE_URL;
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated && !currentUser) {
+    if (!isAuthenticated || !user) {
       navigate("/login");
     }
-    // In a real app, you might fetch initial notification settings and active sessions here
-    // For now, using default/dummy data for these states.
-  }, [isAuthenticated, currentUser, navigate]);
+  }, [isAuthenticated, user, navigate]);
+
+  // Effect to fetch user profile data from backend
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!isAuthenticated || !user?.token || !BACKEND_API_BASE_URL) {
+        console.error("ProfilePage: Missing authentication, token, or backend URL. Cannot fetch profile.");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${user.token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          console.error("ProfilePage: API: Session expired or invalid token. Logging out.");
+          logout();
+          return;
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch profile: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const data = await response.json();
+
+        // Update notification settings state with fetched data
+        if (data.emailNotifications !== undefined) {
+          setEmailNotifications(data.emailNotifications);
+        }
+        if (data.pushNotifications !== undefined) {
+          setPushNotifications(data.pushNotifications);
+        }
+        // If real sessions were fetched from backend, setSessions(data.sessions) here
+      } catch (err) {
+        console.error("ProfilePage: Error fetching user profile:", err);
+        // Optionally set an error message to display to the user
+      }
+    };
+
+    if (isAuthenticated && user?.token && BACKEND_API_BASE_URL) {
+      fetchUserProfile();
+    }
+  }, [isAuthenticated, user, logout, BACKEND_API_BASE_URL]);
 
   /**
    * Handles the confirmation of disconnecting the Google account.
@@ -80,29 +125,32 @@ export default function Profile() {
    * Provides user feedback via `disconnectMessage`.
    */
   const handleDisconnectConfirm = async () => {
-    setDisconnectMessage(null); // Clear previous message
+    setDisconnectMessage(null);
+    if (!user?.token || !BACKEND_API_BASE_URL) {
+      setDisconnectMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
+      return;
+    }
     try {
-      const response = await fetch("/api/disconnect", {
+      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/disconnect`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": currentUser?.uid, // Send user ID for backend identification
+          "Authorization": `Bearer ${user.token}`,
         },
       });
 
       const data = await response.json();
       if (response.ok) {
         setDisconnectMessage({ type: "success", text: "Google account disconnected successfully!" });
-        // Call logout from AuthContext to clear local session and redirect
         logout();
       } else {
         setDisconnectMessage({ type: "error", text: data.error || "Failed to disconnect Google account." });
       }
-      setShowDisconnectModal(false); // Close the modal regardless of success/failure
+      setShowDisconnectModal(false);
     } catch (error) {
       console.error("Network error while disconnecting:", error);
       setDisconnectMessage({ type: "error", text: "Network error while disconnecting." });
-      setShowDisconnectModal(false); // Close the modal on network error
+      setShowDisconnectModal(false);
     }
   };
 
@@ -112,29 +160,32 @@ export default function Profile() {
    * Provides user feedback via `deleteMessage`.
    */
   const handleDeleteConfirm = async () => {
-    setDeleteMessage(null); // Clear previous message
+    setDeleteMessage(null);
+    if (!user?.token || !BACKEND_API_BASE_URL) {
+      setDeleteMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
+      return;
+    }
     try {
-      const response = await fetch("/api/account", {
+      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/account`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": currentUser?.uid, // Send user ID for backend identification
+          "Authorization": `Bearer ${user.token}`,
         },
       });
 
       const data = await response.json();
       if (response.ok) {
         setDeleteMessage({ type: "success", text: "Account deleted successfully!" });
-        // Call logout from AuthContext to clear local session and redirect
         logout();
       } else {
         setDeleteMessage({ type: "error", text: data.error || "Failed to delete account." });
       }
-      setShowDeleteModal(false); // Close the modal regardless of success/failure
+      setShowDeleteModal(false);
     } catch (error) {
       console.error("Network error while deleting account:", error);
       setDeleteMessage({ type: "error", text: "Network error while deleting account." });
-      setShowDeleteModal(false); // Close the modal on network error
+      setShowDeleteModal(false);
     }
   };
 
@@ -144,13 +195,18 @@ export default function Profile() {
    * Provides user feedback via `notificationMessage`.
    */
   const handleNotificationUpdate = async () => {
-    setNotificationMessage(null); // Clear previous message
+    setNotificationMessage(null);
+    if (!user?.token || !BACKEND_API_BASE_URL) {
+      setNotificationMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
+      return;
+    }
+
     try {
-      const response = await fetch("/api/notifications", {
+      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/notifications`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": currentUser?.uid, // Sending user ID in header for backend
+          "Authorization": `Bearer ${user.token}`,
         },
         body: JSON.stringify({ emailNotifications, pushNotifications }),
       });
@@ -173,22 +229,25 @@ export default function Profile() {
    * Provides user feedback via `sessionMessage`.
    */
   const handleEndSession = async (sessionId) => {
-    setSessionMessage(null); // Clear previous message
+    setSessionMessage(null);
+    if (!user?.token || !BACKEND_API_BASE_URL) {
+      setSessionMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
+      return;
+    }
     try {
-      const response = await fetch("/api/sessions/end", {
+      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/sessions/end`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": currentUser?.uid, // Send user ID for backend identification
+          "Authorization": `Bearer ${user.token}`,
         },
-        body: JSON.stringify({ sessionId }), // Send the ID of the session to end
+        body: JSON.stringify({ sessionId }),
       });
 
       const data = await response.json();
       if (response.ok) {
-        // Optimistically update UI by filtering out the ended session
-        setSessions(sessions.filter((s) => s.id !== sessionId));
-        setSessionMessage({ type: "success", text: `Session ${sessionId} ended.` });
+        setSessions(sessions.filter((s) => s.id !== sessionId)); // Optimistic UI update
+        setSessionMessage({ type: "success", text: `Session ${sessionId} ended.` }); // Removed "(simulated)"
       } else {
         setSessionMessage({ type: "error", text: data.error || "Failed to end session." });
       }
