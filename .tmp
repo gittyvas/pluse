@@ -1,0 +1,188 @@
+
+// google-oauth-app/frontend/src/pages/ContactsPage.jsx
+
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+
+export default function ContactsPage() {
+  const { user, isAuthenticated, loading, logout } = useAuth();
+  const navigate = useNavigate();
+  const [contacts, setContacts] = useState([]);
+  const [dataLoading, setDataLoading] = useState(true); // State to manage contacts data fetching status
+  const [error, setError] = useState(null);
+
+  const accent = "#25D366"; // Define accent color for consistent styling
+
+  // --- Backend API Base URL ---
+  const BACKEND_API_BASE_URL = "http://localhost:3000"; // Ensure this matches your backend
+
+  useEffect(() => {
+    console.log("ContactsPage useEffect: isAuthenticated =", isAuthenticated, "user =", user, "loading =", loading, "dataLoading =", dataLoading);
+
+    // If AuthContext is still loading, wait.
+    if (loading) {
+      console.log("ContactsPage useEffect: AuthContext is still loading, waiting.");
+      return;
+    }
+
+    // If not authenticated, redirect to login.
+    if (!isAuthenticated) {
+      console.log("ContactsPage useEffect: Not authenticated, redirecting to login.");
+      navigate("/login", { replace: true });
+      return;
+    }
+
+    // If authenticated, but user object is null (should not happen after robust AuthContext), or data already loaded, or already loading
+    if (!user || !dataLoading) { // Changed condition to explicitly check for user object
+        console.log("ContactsPage useEffect: User object is null or data already loaded/loading. Skipping fetch.");
+        return;
+    }
+
+    // If we reach here, isAuthenticated is true, user is not null, and dataLoading is true (meaning we need to fetch)
+    console.log("ContactsPage useEffect: Authenticated and user data available. Attempting to fetch contacts...");
+    const fetchContacts = async () => {
+      setError(null); // Clear previous errors
+
+      const currentJwt = user.token; // Access token from the user object
+
+      if (!currentJwt) {
+        console.warn("ContactsPage: No JWT found in user object. This should not happen if user is authenticated.");
+        setError("Authentication token missing. Please log in.");
+        setDataLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${BACKEND_API_BASE_URL}/api/contacts`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${currentJwt}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          console.error("Contacts API: Session expired or invalid token. Logging out.");
+          logout();
+          return;
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch contacts: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const contactsData = await response.json();
+        setContacts(contactsData);
+        console.log("Fetched Contacts for ContactsPage:", contactsData);
+
+      } catch (err) {
+        console.error("Error fetching contacts for ContactsPage:", err);
+        setError("Failed to load contacts. Please ensure you granted Google Contacts permission and your backend is running. Error: " + err.message);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    fetchContacts();
+  }, [isAuthenticated, user, loading, navigate, logout, dataLoading]); // Dependencies for useEffect
+
+  if (loading || dataLoading) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#181C1F", color: "#fff" }}>
+        <p>Loading contacts...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", background: "#181C1F", color: "red" }}>
+        <p>{error}</p>
+        <button onClick={() => logout()} style={{ marginTop: "20px", padding: "10px 20px", background: accent, color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
+          Log Out
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: "#181C1F", color: "#fff", minHeight: "100vh", padding: "32px" }}>
+      <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "30px", color: accent }}>Your Google Contacts</h1>
+      <button
+        onClick={() => navigate("/dashboard")}
+        style={{
+          marginBottom: "20px",
+          padding: "10px 20px",
+          background: "#333",
+          color: "white",
+          border: "none",
+          borderRadius: "8px",
+          cursor: "pointer",
+          transition: "background 0.2s",
+        }}
+        onMouseOver={(e) => (e.currentTarget.style.background = "#555")}
+        onMouseOut={(e) => (e.currentTarget.style.background = "#333")}
+      >
+        ← Back to Dashboard
+      </button>
+
+      {contacts.length === 0 ? (
+        <p style={{ fontSize: "1.2rem", color: "#CCC" }}>No contacts found. Make sure you granted Google Contacts permission during login.</p>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
+          {contacts.map((contact) => (
+            <div
+              key={contact.resource_name}
+              style={{
+                border: `1px solid #333`,
+                borderRadius: "8px",
+                padding: "15px",
+                background: "#2A2E31",
+                boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
+                display: "flex",
+                alignItems: "center",
+                gap: "15px",
+                transition: "transform 0.2s",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.transform = "translateY(-5px)")}
+              onMouseOut={(e) => (e.currentTarget.style.transform = "translateY(0)")}
+            >
+              {contact.photo_url ? (
+                <img
+                  src={contact.photo_url}
+                  alt={contact.name || "Contact Photo"}
+                  style={{ width: "60px", height: "60px", borderRadius: "50%", objectFit: "cover" }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "60px", height: "60px", borderRadius: "50%", background: accent,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    color: "#fff", fontSize: "24px", fontWeight: "bold"
+                  }}
+                >
+                  {contact.name ? contact.name.charAt(0).toUpperCase() : "?"}
+                </div>
+              )}
+              <div>
+                <h3 style={{ margin: "0 0 5px 0", color: "#FFF" }}>{contact.name || "Unknown Contact"}</h3>
+                {contact.emails && contact.emails.length > 0 && (
+                  <p style={{ margin: "0", fontSize: "14px", color: "#CCC" }}>
+                    Email: {contact.emails.map(e => e.value).join(", ")}
+                  </p>
+                )}
+                {contact.phones && contact.phones.length > 0 && (
+                  <p style={{ margin: "0", fontSize: "14px", color: "#CCC" }}>
+                    Phone: {contact.phones.map(p => p.value).join(", ")}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

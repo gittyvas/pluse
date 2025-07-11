@@ -1,0 +1,216 @@
+// google-oauth-app/frontend/src/context/AuthContext.jsx
+
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+
+const AuthContext = createContext(null);
+
+export const AuthProvider = ({ children }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true); // Start as true, set to false after initial check
+  const [dashboardSummaryData, setDashboardSummaryData] = useState(null);
+
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Ref to ensure initial authentication check sequence runs correctly once per app load.
+  // It tracks if the initial determination (from URL or localStorage) has been made.
+  const initialAuthCheckCompleted = useRef(false);
+
+  // Unified function to update authentication state and local storage.
+  // Memoized with useCallback to prevent unnecessary re-creations.
+  const setAuthenticationState = useCallback((authenticated, userData, token, dashboardData) => {
+    setIsAuthenticated(authenticated);
+    setUser(userData);
+    setDashboardSummaryData(dashboardData);
+
+    if (authenticated) {
+      localStorage.setItem("userToken", token);
+      localStorage.setItem("authUser", JSON.stringify(userData));
+      if (dashboardData) {
+        localStorage.setItem("dashboardSummaryData", JSON.stringify(dashboardData));
+      }
+      console.log("AuthContext: Authentication state set to Authenticated. User:", userData?.email);
+    } else {
+      localStorage.removeItem("userToken");
+      localStorage.removeItem("authUser");
+      localStorage.removeItem("dashboardSummaryData");
+      console.log("AuthContext: Authentication state set to Not Authenticated.");
+    }
+    setLoading(false); // Authentication check is now complete
+  }, []); // Empty dependency array as it only uses state setters
+
+  // Logout function
+  const logout = useCallback(() => {
+    console.log("AuthContext: Performing logout.");
+    setAuthenticationState(false, null, null, null); // Use unified state setter to clear everything
+    initialAuthCheckCompleted.current = false; // Reset for next login flow if app persists
+    navigate("/login", { replace: true });
+  }, [navigate, setAuthenticationState]); // Depend on navigate and setAuthenticationState
+
+  // Main effect for handling authentication flow on app load and URL changes
+  useEffect(() => {
+    console.log("AuthContext: useEffect triggered. Location:", location.pathname, "Search:", location.search);
+    console.log("AuthContext: initialAuthCheckCompleted.current =", initialAuthCheckCompleted.current);
+
+    // This check is CRUCIAL to prevent redundant re-runs.
+    // If the initial auth check is done AND there are no new URL search parameters,
+    // we return immediately, avoiding reprocessing the same state.
+    if (initialAuthCheckCompleted.current && !location.search) {
+      console.log("AuthContext: Initial check already completed and no new URL search. Skipping full auth flow.");
+      return;
+    }
+
+    const processAuthFlow = async () => {
+      let currentToken = null;
+      let currentUserData = null;
+      let cachedDashboardData = null;
+      let authenticatedByUrl = false; // Flag to track if auth was established via URL params
+
+      const params = new URLSearchParams(location.search);
+      const urlToken = params.get("token");
+      const urlEmail = params.get("email");
+      const urlName = params.get("name");
+      const urlPicture = params.get("picture");
+      const urlUserId = params.get("userId");
+      const urlError = params.get("error");
+
+      // --- Phase 1: Process URL parameters (for fresh login/signup callback) ---
+      // This block runs ONLY if URL has search params AND initial check hasn't completed yet for *this app load*.
+      if (location.search && !initialAuthCheckCompleted.current) {
+        if (urlError) {
+          console.error("AuthContext: Google OAuth Error from URL:", urlError);
+          setAuthenticationState(false, null, null, null);
+          initialAuthCheckCompleted.current = true; // Mark as processed, even for error
+          navigate("/login", { replace: true });
+          return; // Exit this `processAuthFlow` run. `Maps` triggers new `useEffect`.
+        }
+
+        if (urlToken && urlEmail && urlName && urlUserId) {
+          console.log("AuthContext: Found user data in URL params (fresh login). Storing locally and setting state.");
+          currentToken = urlToken;
+          currentUserData = { email: urlEmail, name: urlName, picture: urlPicture, userId: urlUserId, token: currentToken };
+          authenticatedByUrl = true; // Mark that authentication happened via URL
+
+          // Set authentication state immediately based on URL params
+          setAuthenticationState(true, currentUserData, currentToken, null); // No cached dashboard data on fresh login
+
+          initialAuthCheckCompleted.current = true; // Mark that the initial auth check is now complete
+
+          // Clean the URL. This navigate will cause a re-render and a *new* useEffect run.
+          // The new useEffect run will then find `location.search` empty and proceed to localStorage check (or skip).
+          const cleanPath = location.pathname.replace(/\/+$/, "");
+          if (location.search) { // Only navigate if there were params to clean
+            console.log("AuthContext: Cleaning URL to", cleanPath);
+            navigate(cleanPath, { replace: true });
+            return; // IMPORTANT: Exit THIS useEffect run. The navigation will trigger the next one.
+          }
+        }
+      }
+
+      // --- Phase 2: Read from localStorage (for persistent sessions) ---
+      // This runs if:
+      // 1. No URL parameters were present.
+      // 2. URL parameters were processed and cleaned by a *previous* `useEffect` run (meaning `location.search` is now empty).
+      // 3. We were not already authenticated by processing URL parameters in this `processAuthFlow` run.
+      if (!authenticatedByUrl) {
+        console.log("AuthContext: No fresh login via URL params, attempting to read from localStorage for persistent session.");
+        const storedToken = localStorage.getItem("userToken");
+        const storedUser = localStorage.getItem("authUser");
+        const storedDashboardData = localStorage.getItem("dashboardSummaryData");
+
+        console.log("AuthContext: localStorage - userToken:", storedToken ? "Exists" : "Null", "authUser:", storedUser ? "Exists" : "Null");
+
+        if (storedToken && storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser);
+            const decodedToken = jwtDecode(storedToken);
+
+            if (decodedToken.exp * 1000 < Date.now()) {
+              console.warn("AuthContext: Stored token expired. Logging out.");
+              setAuthenticationState(false, null, null, null);
+            } else {
+              currentToken = storedToken;
+              currentUserData = { ...parsedUser, token: storedToken }; // Ensure token is part of user object if needed
+              if (storedDashboardData) {
+                cachedDashboardData = JSON.parse(storedDashboardData);
+                console.log("AuthContext: Found cached dashboard data in localStorage.");
+              }
+              setAuthenticationState(true, currentUserData, currentToken, cachedDashboardData);
+              console.log("AuthContext: Valid session found in localStorage. User:", currentUserData.email);
+            }
+          } catch (e) {
+            console.error("AuthContext: Failed to parse stored user data or decode token:", e);
+            setAuthenticationState(false, null, null, null); // Clear state on error
+          }
+        } else {
+          console.log("AuthContext: No valid session found in localStorage.");
+          setAuthenticationState(false, null, null, null); // Explicitly ensure not authenticated if no valid session
+        }
+      }
+
+      // Final step: ensure initialAuthCheckCompleted is set for this load
+      // This catches cases where neither URL params nor localStorage yields a session
+      // and prevents redundant checks on subsequent non-triggering renders.
+      if (!initialAuthCheckCompleted.current) {
+          initialAuthCheckCompleted.current = true;
+      }
+    };
+
+    // Execute the authentication flow
+    processAuthFlow();
+
+  }, [location.search, location.pathname, navigate, setAuthenticationState]); // Dependencies for useEffect
+
+  // This effect logs current state for debugging after any state update
+  // It only logs once per state change, after initial loading is done to prevent spam.
+  useEffect(() => {
+    if (!loading) {
+      console.log("AuthContext Current State: isAuthenticated =", isAuthenticated, "user =", user?.email, "loading =", loading, "dashboardSummaryData =", dashboardSummaryData);
+    }
+  }, [isAuthenticated, user, loading, dashboardSummaryData]);
+
+  // Manual login function (e.g., if you had a traditional login form)
+  const login = useCallback((userData, token) => {
+    console.log("AuthContext: Manual login called for user:", userData.email);
+    // When manually logging in, this immediately sets the state.
+    // Dashboard data will typically be fetched by the Dashboard component itself after successful login.
+    setAuthenticationState(true, userData, token, null);
+    navigate("/dashboard", { replace: true }); // Navigate to dashboard after manual login
+  }, [setAuthenticationState, navigate]);
+
+  // Function to update dashboard summary data (called by Dashboard component)
+  const updateDashboardSummary = useCallback((data) => {
+    console.log("AuthContext: Updating dashboard summary data:", data);
+    setDashboardSummaryData(data);
+    localStorage.setItem("dashboardSummaryData", JSON.stringify(data));
+  }, []); // No dependencies as it only uses state setter and localStorage
+
+  // Value provided by the AuthContext to its consumers
+  const value = {
+    isAuthenticated,
+    user,
+    loading,
+    dashboardSummaryData,
+    login,
+    logout,
+    updateDashboardSummary,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// Custom hook to consume the AuthContext
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
