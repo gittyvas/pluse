@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Specify Node.js version
+  NODE_VERSION = "20" # Use "20" as per your .nvmrc
+
+  # Force Netlify to use npm for dependency installation
+  NPM_FLAGS = "" # Clear any default npm flags that might interfere
+  NPM_CONFIG_USER_AGENT = "npm" # Explicitly set user agent to npm
+  NPM_COMMAND = "npm install" # Explicitly tell Netlify to use npm install
+  NPM_CI = "false" # Ensure npm install is used, not npm ci (which is stricter)
