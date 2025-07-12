@@ -1,0 +1,14 @@
+    # --- SPA Fallback for Client-Side Routing ---
+    # This rule redirects all requests that don't match a file or directory
+    # to your index.html, allowing your client-side router (React Router) to handle them.
+    # The '200' status code tells the browser that the request was successful,
+    # even though it's serving the same index.html for different paths.
+    /* /index.html   200
+
+    # --- API Proxy to Backend ---
+    # This rule proxies requests from your frontend's /api path to your live backend.
+    # For example, a request from your frontend to `https://pluse.gitthit.com.ng/api/notes`
+    # will be transparently sent by Netlify to `https://pluse-crm.onrender.com/api/notes`.
+    # This helps avoid CORS issues and keeps your frontend code cleaner.
+    /api/* https://pluse-crm.onrender.com/api/:splat    200
+    
