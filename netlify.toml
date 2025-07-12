@@ -1,13 +1,27 @@
+# netlify.toml at the root of your frontend project
+
 [build]
   command = "npm run build"
   publish = "dist"
 
 [build.environment]
-  # Specify Node.js version
   NODE_VERSION = "20" # Use "20" as per your .nvmrc
+  # These flags are usually not needed unless you have specific build issues
+  # NPM_FLAGS = ""
+  # NPM_CONFIG_USER_AGENT = "npm"
+  # NPM_COMMAND = "npm install"
+  # NPM_CI = "false"
 
-  # Force Netlify to use npm for dependency installation
-  NPM_FLAGS = "" # Clear any default npm flags that might interfere
-  NPM_CONFIG_USER_AGENT = "npm" # Explicitly set user agent to npm
-  NPM_COMMAND = "npm install" # Explicitly tell Netlify to use npm install
-  NPM_CI = "false" # Ensure npm install is used, not npm ci (which is stricter)
+# --- SPA Fallback for Client-Side Routing ---
+[[redirects]] # <--- CHANGE THIS TO DOUBLE BRACKETS
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# --- API Proxy to Backend ---
+# This proxies frontend requests from /api to your Render backend
+[[redirects]] # <--- CHANGE THIS TO DOUBLE BRACKETS
+  from = "/api/*"
+  to = "https://pluse-crm.onrender.com/api/:splat"
+  status = 200
+  force = true

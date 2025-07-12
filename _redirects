@@ -1,5 +1,0 @@
-# --- SPA Fallback for Client-Side Routing ---
-/* /index.html   200
-
-# --- API Proxy to Backend ---
-/api/* https://pluse-crm.onrender.com/api/:splat    200
