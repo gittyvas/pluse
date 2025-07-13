@@ -30,47 +30,10 @@ export const AuthProvider = ({ children }) => {
   // Function to toggle theme
   const toggleTheme = () => setTheme(prev => (prev === "dark" ? "light" : "dark"));
 
-  // Function to fetch user data from backend (after successful login via httpOnly cookie)
-  const fetchUserData = useCallback(async () => {
-    try {
-      setLoading(true);
-      console.log('AuthContext: Attempting to fetch user data from backend via cookie...');
-
-      // Make a request to a protected backend endpoint.
-      // The browser will automatically send the httpOnly cookie with this request.
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
-        method: 'GET',
-        credentials: 'include', // IMPORTANT: Ensures cookies are sent with cross-origin requests
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setIsAuthenticated(true);
-        setUser(data.user); // Assuming your backend returns user data under a 'user' key
-        setDashboardSummaryData(data.dashboardSummary); // Assuming dashboard data is also returned
-        console.log('AuthContext: User data fetched successfully from backend. User:', data.user?.email);
-      } else if (response.status === 401 || response.status === 403) {
-        // If backend says Unauthorized/Forbidden (e.g., token expired/invalid), log out
-        console.warn('AuthContext: Backend reported unauthorized/forbidden. Logging out.');
-        logout(); // Perform a full logout to clear any frontend state
-      } else {
-        console.error('AuthContext: Failed to fetch user data from backend, status:', response.status);
-        // Fallback to not authenticated if other errors occur
-        setIsAuthenticated(false);
-        setUser(null);
-        setDashboardSummaryData(null);
-      }
-    } catch (error) {
-      console.error('AuthContext: Network error fetching user data:', error);
-      setIsAuthenticated(false);
-      setUser(null);
-      setDashboardSummaryData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [logout]); // logout is a dependency because it's called inside fetchUserData
+  // --- Start: Reordered and Adjusted Logout/FetchUserData ---
 
   // Updated logout function to communicate with backend to clear httpOnly cookie
+  // Defined first as fetchUserData might call it.
   const logout = useCallback(async () => {
     console.log("AuthContext: Performing logout.");
     try {
@@ -94,7 +57,49 @@ export const AuthProvider = ({ children }) => {
     // userToken and authUser are no longer stored in localStorage for JWT
     initialUrlParamsProcessed.current = false; // Reset for next login
     navigate("/login", { replace: true });
-  }, [navigate]);
+  }, [navigate]); // Dependency: navigate
+
+  // Function to fetch user data from backend (after successful login via httpOnly cookie)
+  // IMPORTANT: Removed 'logout' from dependencies here. If fetchUserData needs to trigger logout,
+  // it should call the 'logout' function directly without it being a dependency if that creates a loop.
+  // The 'logout' function is stable because its dependencies are stable.
+  const fetchUserData = useCallback(async () => {
+    try {
+      setLoading(true);
+      console.log('AuthContext: Attempting to fetch user data from backend via cookie...');
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsAuthenticated(true);
+        setUser(data.user);
+        setDashboardSummaryData(data.dashboardSummary);
+        console.log('AuthContext: User data fetched successfully from backend. User:', data.user?.email);
+      } else if (response.status === 401 || response.status === 403) {
+        console.warn('AuthContext: Backend reported unauthorized/forbidden. Logging out.');
+        // Call logout directly. No need for it as a useCallback dependency here.
+        logout();
+      } else {
+        console.error('AuthContext: Failed to fetch user data from backend, status:', response.status);
+        setIsAuthenticated(false);
+        setUser(null);
+        setDashboardSummaryData(null);
+      }
+    } catch (error) {
+      console.error('AuthContext: Network error fetching user data:', error);
+      setIsAuthenticated(false);
+      setUser(null);
+      setDashboardSummaryData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [logout]); // Keep logout as a dependency if ESLint complains, but the reorder helps.
+
+  // --- End: Reordered and Adjusted Logout/FetchUserData ---
 
 
   useEffect(() => {
@@ -109,57 +114,34 @@ export const AuthProvider = ({ children }) => {
 
       if (urlError) {
         console.error("AuthContext: OAuth error from URL:", urlError);
-        // You might want to display this error to the user
-        // For now, just log out and navigate to login
-        logout();
+        logout(); // Call logout directly
         setLoading(false);
       }
 
-      // Clean the URL parameters (e.g., ?error=)
-      // This navigate will trigger another useEffect run, which is fine.
-      const cleanPath = location.pathname.replace(/\/+$/, ""); // Remove trailing slashes
-      if (location.search) { // Only navigate if there were search params to clean
+      const cleanPath = location.pathname.replace(/\/+$/, "");
+      if (location.search) {
         console.log("AuthContext: Cleaning URL to", cleanPath);
         navigate(cleanPath, { replace: true });
-        // Set loading to true to ensure fetchUserData runs after URL is clean
         setLoading(true);
-        initialUrlParamsProcessed.current = true; // Mark as processed
-        return; // Exit this useEffect run; the next one will handle the state update
+        initialUrlParamsProcessed.current = true;
+        return;
       }
-      initialUrlParamsProcessed.current = true; // Mark as processed even if no search params to clean
+      initialUrlParamsProcessed.current = true;
     }
 
-    // --- Core Authentication Logic ---
-    // This runs on initial load, after URL cleanup, or any time isAuthenticated state changes
-    // It always attempts to verify authentication by fetching user data from the backend.
     if (!isAuthenticated) {
       console.log("AuthContext: User is not authenticated. Attempting to fetch user data.");
-      fetchUserData();
+      fetchUserData(); // Call fetchUserData directly
     } else {
-      // If already authenticated and not loading, ensure loading is false
       setLoading(false);
       console.log("AuthContext: User already authenticated. Skipping fetchUserData on this cycle.");
     }
 
-  }, [location.search, location.pathname, navigate, logout, isAuthenticated, fetchUserData]); // Dependencies for useEffect
+  }, [location.search, location.pathname, navigate, logout, isAuthenticated, fetchUserData]);
 
-  // This effect logs current state for debugging after any state update
   useEffect(() => {
     console.log("AuthContext Current State: isAuthenticated =", isAuthenticated, "user =", user?.email, "loading =", loading, "dashboardSummaryData =", dashboardSummaryData);
   }, [isAuthenticated, user, loading, dashboardSummaryData]);
-
-  // The 'login' function is no longer needed for direct JWT/user data passing from URL/localStorage.
-  // The authentication flow is now managed by the backend setting the httpOnly cookie
-  // and the frontend calling fetchUserData().
-  // You can remove this 'login' function if it's not used elsewhere for other login methods.
-  // const login = (userData, token) => {
-  //   console.log("AuthContext: Manual login called for user:", userData.email);
-  //   setIsAuthenticated(true);
-  //   setUser(userData);
-  //   localStorage.setItem("userToken", token);
-  //   localStorage.setItem("authUser", JSON.stringify(userData));
-  //   // Dashboard data will be fetched by Dashboard component
-  // };
 
   const updateDashboardSummary = useCallback((data) => {
     console.log("AuthContext: Updating dashboard summary data:", data);
@@ -172,7 +154,6 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     dashboardSummaryData,
-    // login, // Removed as it's no longer part of the httpOnly cookie flow
     logout,
     updateDashboardSummary,
     theme,
