@@ -13,6 +13,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dashboardSummaryData, setDashboardSummaryData] = useState(null);
+  // Add theme state, initialized from localStorage
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
 
   const navigate = useNavigate();
@@ -192,4 +193,3 @@ export const useAuth = () => {
   }
   return context;
 };
-```
