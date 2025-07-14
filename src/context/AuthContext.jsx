@@ -114,9 +114,8 @@ export const AuthProvider = ({ children }) => {
     }
 
     // --- IMPORTANT CHANGE HERE ---
-    // Only attempt to fetch user data if not already authenticated AND
-    // if the current path is NOT the public home page ('/') or the login page ('/login').
-    const isPublicRoute = location.pathname === '/' || location.pathname === '/login';
+    // Now includes '/home' as a public route
+    const isPublicRoute = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/home';
 
     if (!isAuthenticated && !isPublicRoute) {
       console.log("AuthContext: User is not authenticated and on a protected route. Attempting to fetch user data.");
