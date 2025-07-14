@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
 
 const AuthContext = createContext(null);
 
@@ -11,148 +10,125 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dashboardSummaryData, setDashboardSummaryData] = useState(null);
-  // Add theme state, initialized from localStorage
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
 
   const navigate = useNavigate();
   const location = useLocation();
-  // Ref to ensure initial URL param processing happens only once per app load
   const initialUrlParamsProcessed = useRef(false);
 
-  // Effect to apply theme class and persist to localStorage
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // Function to toggle theme
   const toggleTheme = () => setTheme(prev => (prev === "dark" ? "light" : "dark"));
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     console.log("AuthContext: Performing logout.");
+    try {
+      await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      console.log('AuthContext: Backend logout endpoint hit successfully.');
+    } catch (error) {
+      console.error('AuthContext: Error calling backend logout:', error);
+    }
+
     setIsAuthenticated(false);
     setUser(null);
     setDashboardSummaryData(null);
-    localStorage.removeItem("userToken");
-    localStorage.removeItem("authUser");
     localStorage.removeItem("dashboardSummaryData");
-    localStorage.removeItem("theme"); // Also remove theme on logout for a clean slate
-    initialUrlParamsProcessed.current = false; // Reset for next login
-    navigate("/login", { replace: true });
+    localStorage.removeItem("theme");
+    initialUrlParamsProcessed.current = false;
+    navigate("/login", { replace: true }); // Redirect to /login after explicit logout
   }, [navigate]);
+
+  const fetchUserData = useCallback(async () => {
+    try {
+      setLoading(true);
+      console.log('AuthContext: Attempting to fetch user data from backend via cookie...');
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsAuthenticated(true);
+        setUser(data.user);
+        setDashboardSummaryData(data.dashboardSummary);
+        console.log('AuthContext: User data fetched successfully from backend. User:', data.user?.email);
+      } else if (response.status === 401 || response.status === 403) {
+        console.warn('AuthContext: Backend reported unauthorized/forbidden. Logging out.');
+        logout();
+      } else {
+        console.error('AuthContext: Failed to fetch user data from backend, status:', response.status);
+        setIsAuthenticated(false);
+        setUser(null);
+        setDashboardSummaryData(null);
+      }
+    } catch (error) {
+      console.error('AuthContext: Network error fetching user data:', error);
+      setIsAuthenticated(false);
+      setUser(null);
+      setDashboardSummaryData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [logout]);
 
   useEffect(() => {
     console.log("AuthContext: useEffect triggered. Location:", location.pathname, "Search:", location.search);
     console.log("AuthContext: initialUrlParamsProcessed.current =", initialUrlParamsProcessed.current);
 
-    const processAuthFlow = async () => {
-      let currentToken = null;
-      let currentUserData = null;
-      let cachedDashboardData = null;
+    // This block handles initial URL processing (e.g., error messages from backend)
+    // and cleans up the URL.
+    if (location.search && !initialUrlParamsProcessed.current) {
+      const params = new URLSearchParams(location.search);
+      const urlError = params.get("error");
 
-      // --- Phase 1: Process URL parameters for fresh login/signup ---
-      // This block runs ONLY if URL has search params AND they haven't been processed yet
-      if (location.search && !initialUrlParamsProcessed.current) {
-        const params = new URLSearchParams(location.search);
-        const urlToken = params.get("token");
-        const urlEmail = params.get("email");
-        const urlName = params.get("name");
-        const urlPicture = params.get("picture");
-        const urlError = params.get("error");
-
-        if (urlError) {
-          console.error("AuthContext: Google OAuth Error from URL:", urlError);
-          logout();
-          setLoading(false);
-          initialUrlParamsProcessed.current = true; // Mark as processed
-          return; // Exit, as we're logging out
-        }
-
-        if (urlToken && urlEmail && urlName) {
-          console.log("AuthContext: Found user data in URL params (fresh login). Storing in localStorage.");
-          currentToken = urlToken;
-          currentUserData = { email: urlEmail, name: urlName, token: currentToken, picture: urlPicture };
-          localStorage.setItem("userToken", currentToken);
-          localStorage.setItem("authUser", JSON.stringify(currentUserData));
-          initialUrlParamsProcessed.current = true; // Mark as processed
-
-          // Clean the URL parameters. This navigate will trigger another useEffect run.
-          // The next run will then proceed to Phase 2 (read from localStorage).
-          const cleanPath = location.pathname.replace(/\/+$/, ""); // Remove trailing slashes
-          console.log("AuthContext: Cleaning URL to", cleanPath);
-          navigate(cleanPath, { replace: true });
-          setLoading(true); // Keep loading true until localStorage is read in next cycle
-          return; // Exit this useEffect run; the next one will handle the state update from localStorage
-        }
+      if (urlError) {
+        console.error("AuthContext: OAuth error from URL:", urlError);
+        logout();
+        setLoading(false);
       }
 
-      // --- Phase 2: Read from localStorage (either after URL cleanup or on subsequent renders) ---
-      // This runs if no URL params were processed, or if they were just processed and URL was cleaned.
-      console.log("AuthContext: Attempting to read from localStorage for persistent session.");
-      const storedToken = localStorage.getItem("userToken");
-      const storedUser = localStorage.getItem("authUser");
-      const storedDashboardData = localStorage.getItem("dashboardSummaryData");
-
-      console.log("AuthContext: localStorage - userToken:", storedToken ? "Exists" : "Null", "authUser:", storedUser ? "Exists" : "Null");
-
-      if (storedToken && storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-          const decodedToken = jwtDecode(storedToken);
-
-          if (decodedToken.exp * 1000 < Date.now()) {
-            console.warn("AuthContext: Stored token expired. Logging out.");
-            logout();
-          } else {
-            currentToken = storedToken;
-            currentUserData = { ...parsedUser, token: storedToken };
-            console.log("AuthContext: Valid session found in localStorage. User:", currentUserData.email);
-            if (storedDashboardData) {
-              cachedDashboardData = JSON.parse(storedDashboardData);
-              console.log("AuthContext: Found cached dashboard data in localStorage.");
-            }
-          }
-        } catch (e) {
-          console.error("AuthContext: Failed to parse stored user data or decode token:", e);
-          logout();
-        }
-      } else {
-        console.log("AuthContext: No valid session found in localStorage.");
+      const cleanPath = location.pathname.replace(/\/+$/, "");
+      if (location.search) {
+        console.log("AuthContext: Cleaning URL to", cleanPath);
+        navigate(cleanPath, { replace: true });
+        setLoading(true);
+        initialUrlParamsProcessed.current = true;
+        return;
       }
+      initialUrlParamsProcessed.current = true;
+    }
 
-      // --- Final state update ---
-      if (currentToken && currentUserData) {
-        setIsAuthenticated(true);
-        setUser(currentUserData);
-        setDashboardSummaryData(cachedDashboardData);
-        console.log("AuthContext: Final state -> Authenticated. User:", currentUserData.email);
-      } else {
-        setIsAuthenticated(false);
-        setUser(null);
-        setDashboardSummaryData(null);
-        console.log("AuthContext: Final state -> Not authenticated.");
-      }
-      setLoading(false); // Auth check complete
-    };
+    // --- IMPORTANT CHANGE HERE ---
+    // Only attempt to fetch user data if not already authenticated AND
+    // if the current path is NOT the public home page ('/') or the login page ('/login').
+    const isPublicRoute = location.pathname === '/' || location.pathname === '/login';
 
-    // Execute the authentication flow
-    processAuthFlow();
+    if (!isAuthenticated && !isPublicRoute) {
+      console.log("AuthContext: User is not authenticated and on a protected route. Attempting to fetch user data.");
+      fetchUserData();
+    } else if (isPublicRoute && !isAuthenticated) {
+        // If on a public route and not authenticated, just set loading to false
+        // No automatic fetch, no redirect.
+        setLoading(false);
+        console.log("AuthContext: On public route and not authenticated. Skipping automatic fetch.");
+    } else {
+      setLoading(false);
+      console.log("AuthContext: User already authenticated or on public route. Skipping automatic fetch on this cycle.");
+    }
 
-  }, [location.search, location.pathname, navigate, logout]); // Dependencies for useEffect
+  }, [location.search, location.pathname, navigate, logout, isAuthenticated, fetchUserData]);
 
-  // This effect logs current state for debugging after any state update
   useEffect(() => {
     console.log("AuthContext Current State: isAuthenticated =", isAuthenticated, "user =", user?.email, "loading =", loading, "dashboardSummaryData =", dashboardSummaryData);
   }, [isAuthenticated, user, loading, dashboardSummaryData]);
-
-  const login = (userData, token) => {
-    console.log("AuthContext: Manual login called for user:", userData.email);
-    setIsAuthenticated(true);
-    setUser(userData);
-    localStorage.setItem("userToken", token);
-    localStorage.setItem("authUser", JSON.stringify(userData));
-    // Dashboard data will be fetched by Dashboard component
-  };
 
   const updateDashboardSummary = useCallback((data) => {
     console.log("AuthContext: Updating dashboard summary data:", data);
@@ -165,11 +141,10 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     dashboardSummaryData,
-    login,
     logout,
     updateDashboardSummary,
-    theme, // Added theme to context value
-    toggleTheme, // Added toggleTheme to context value
+    theme,
+    toggleTheme,
   };
 
   return (
