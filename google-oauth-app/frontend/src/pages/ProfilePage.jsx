@@ -1,10 +1,11 @@
-// google-oauth-app/frontend/src/pages/Profile.jsx
+// google-oauth-app/frontend/src/pages/ProfilePage.jsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 
-// Reusable FooterLink Component
+// Reusable FooterLink Component (kept for consistency if used elsewhere, though not in this specific file's render)
 const FooterLink = ({ label, path }) => {
   const textColor = "var(--muted-foreground)";
   const accentColor = "#4CAF50"; // Soft green accent
@@ -27,236 +28,228 @@ const FooterLink = ({ label, path }) => {
   );
 };
 
+// Reusable Confirmation Modal Component
+const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText, cancelText, accentColor, cardBgColor, textColor, mutedTextColor, cardBorderColor }) => {
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      background: "rgba(0,0,0,0.6)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+    }}>
+      <div style={{
+        background: cardBgColor,
+        padding: "30px",
+        borderRadius: "15px",
+        boxShadow: "0 5px 20px rgba(0,0,0,0.2)",
+        maxWidth: "450px",
+        textAlign: "center",
+        border: `1px solid ${cardBorderColor}`,
+      }}>
+        <p style={{ fontSize: "1.2rem", color: textColor, marginBottom: "20px" }}>
+          {message}
+        </p>
+        <div style={{ display: "flex", justifyContent: "center", gap: "15px" }}>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: "10px 20px",
+              fontSize: "1rem",
+              fontWeight: "bold",
+              background: accentColor, // Use provided accentColor for confirm button
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              "&:hover": { background: accentColor === "#DC3545" ? "#C82333" : "#43A047" }, // Darken based on color
+            }}
+          >
+            {confirmText}
+          </button>
+          <button
+            onClick={onCancel}
+            style={{
+              padding: "10px 20px",
+              fontSize: "1rem",
+              fontWeight: "bold",
+              background: mutedTextColor,
+              color: textColor,
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              "&:hover": { background: "#808080" },
+            }}
+          >
+            {cancelText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
-export default function Profile() {
+
+export default function ProfilePage() {
   const navigate = useNavigate();
-  const { isAuthenticated, currentUser, logout, user, theme, toggleTheme } = useAuth();
+  const { isAuthenticated, loading, logout, theme, toggleTheme } = useAuth(); // Include theme and toggleTheme
+
+  // State for fetched profile data
+  const [profile, setProfile] = useState(null);
+
+  // State for notifications
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [pushNotifications, setPushNotifications] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState(null); // For notification feedback
 
   // State for modals
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  // State for notifications - initialized with default values, will be updated by fetch
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState(null); // For notification feedback
+  // State for general error messages (e.g., failed to fetch profile)
+  const [error, setError] = useState(null);
 
-  // State for session management - initialized as empty, will be populated by backend if real sessions are managed.
-  const [sessions, setSessions] = useState([]);
-  const [sessionMessage, setSessionMessage] = useState(null); // For session management feedback
-
-  // States for disconnect and delete messages
-  const [disconnectMessage, setDisconnectMessage] = useState(null);
-  const [deleteMessage, setDeleteMessage] = useState(null);
+  // Define backend base URL from environment variable
+  const API_URL = import.meta.env.VITE_API_URL;
 
   // Define colors consistent with Home.jsx "Soft & Gradient" style
   const bgColor = theme === 'dark' ? "#1A222A" : "#F8FBF8";
   const textColor = theme === 'dark' ? "#E0E6EB" : "#303030";
-  const accentColor = "#4CAF50";
+  const accentColor = "#4CAF50"; // Soft green accent
   const cardBgColor = theme === 'dark' ? "linear-gradient(145deg, #2A343D, #1F2830)" : "linear-gradient(145deg, #FFFFFF, #F0F5F0)";
   const cardBorderColor = theme === 'dark' ? "#3A454F" : "#E0E5E0";
   const mutedTextColor = theme === 'dark' ? "#A0A8B0" : "#606060";
   const headerBgColor = theme === 'dark' ? "#1A222A" : "#FFFFFF";
   const headerBorderColor = theme === 'dark' ? "#3A454F" : "#E8E8E8";
 
-  // Define your backend base URL from environment variable
-  // This environment variable MUST be set in your frontend's build process/hosting config
-  const BACKEND_API_BASE_URL = process.env.REACT_APP_BACKEND_API_BASE_URL;
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated or still loading auth state
   useEffect(() => {
-    if (!isAuthenticated || !user) {
+    if (!loading && !isAuthenticated) {
       navigate("/login");
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, loading, navigate]);
 
-  // Effect to fetch user profile data from backend
+  // Fetch user profile data from backend
+  const fetchProfile = useCallback(async () => {
+    if (!isAuthenticated || !API_URL) {
+      console.warn("ProfilePage: Not authenticated or API_URL missing. Skipping profile fetch.");
+      return;
+    }
+    setError(null); // Clear previous errors
+    setNotificationMessage(null); // Clear notification messages on fetch
+
+    try {
+      const res = await axios.get(`${API_URL}/api/user/profile`, {
+        withCredentials: true, // Ensures HTTP-only cookie is sent
+      });
+      const data = res.data;
+
+      setProfile(data); // Set the entire profile object
+      setEmailNotifications(data.emailNotifications ?? true);
+      setPushNotifications(data.pushNotifications ?? false);
+
+    } catch (err) {
+      console.error("ProfilePage: Failed to fetch profile:", err);
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.error("ProfilePage: API: Session expired or invalid. Logging out.");
+        logout();
+      } else {
+        setError("Failed to load profile. Please try again.");
+      }
+    }
+  }, [isAuthenticated, API_URL, logout]);
+
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!isAuthenticated || !user?.token || !BACKEND_API_BASE_URL) {
-        console.error("ProfilePage: Missing authentication, token, or backend URL. Cannot fetch profile.");
-        return;
-      }
-
-      try {
-        const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile`, {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${user.token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.status === 401 || response.status === 403) {
-          console.error("ProfilePage: API: Session expired or invalid token. Logging out.");
-          logout();
-          return;
-        }
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to fetch profile: ${response.status} ${response.statusText} - ${errorText}`);
-        }
-
-        const data = await response.json();
-
-        // Update notification settings state with fetched data
-        if (data.emailNotifications !== undefined) {
-          setEmailNotifications(data.emailNotifications);
-        }
-        if (data.pushNotifications !== undefined) {
-          setPushNotifications(data.pushNotifications);
-        }
-        // If real sessions were fetched from backend, setSessions(data.sessions) here
-      } catch (err) {
-        console.error("ProfilePage: Error fetching user profile:", err);
-        // Optionally set an error message to display to the user
-      }
-    };
-
-    if (isAuthenticated && user?.token && BACKEND_API_BASE_URL) {
-      fetchUserProfile();
+    if (isAuthenticated && !loading) {
+      fetchProfile();
     }
-  }, [isAuthenticated, user, logout, BACKEND_API_BASE_URL]);
+  }, [isAuthenticated, loading, fetchProfile]);
 
-  /**
-   * Handles the confirmation of disconnecting the Google account.
-   * Sends a POST request to the backend to revoke Google access.
-   * Provides user feedback via `disconnectMessage`.
-   */
-  const handleDisconnectConfirm = async () => {
-    setDisconnectMessage(null);
-    if (!user?.token || !BACKEND_API_BASE_URL) {
-      setDisconnectMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
-      return;
-    }
+
+  // Handle Disconnect Google Account
+  const handleDisconnectGoogle = async () => {
+    setShowDisconnectModal(false); // Close modal
+    setNotificationMessage(null); // Clear any previous notification messages
+
     try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/disconnect`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${user.token}`,
-        },
+      const res = await axios.post(`${API_URL}/api/profile/disconnect`, {}, {
+        withCredentials: true,
       });
-
-      const data = await response.json();
-      if (response.ok) {
-        setDisconnectMessage({ type: "success", text: "Google account disconnected successfully!" });
-        logout();
+      if (res.status === 200) {
+        setNotificationMessage({ type: 'success', text: "Google account disconnected. Logging out for full effect." });
+        setTimeout(() => logout(), 2000); // Log out after a short delay
       } else {
-        setDisconnectMessage({ type: "error", text: data.error || "Failed to disconnect Google account." });
+        setNotificationMessage({ type: 'error', text: res.data.error || "Failed to disconnect Google account." });
       }
-      setShowDisconnectModal(false);
-    } catch (error) {
-      console.error("Network error while disconnecting:", error);
-      setDisconnectMessage({ type: "error", text: "Network error while disconnecting." });
-      setShowDisconnectModal(false);
+    } catch (err) {
+      console.error("Network error while disconnecting:", err);
+      setNotificationMessage({ type: 'error', text: err.response?.data?.error || "Network error while disconnecting." });
     }
   };
 
-  /**
-   * Handles the confirmation of deleting the user's account.
-   * Sends a DELETE request to the backend to remove all user data.
-   * Provides user feedback via `deleteMessage`.
-   */
-  const handleDeleteConfirm = async () => {
-    setDeleteMessage(null);
-    if (!user?.token || !BACKEND_API_BASE_URL) {
-      setDeleteMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
-      return;
-    }
-    try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/account`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${user.token}`,
-        },
-      });
+  // Handle Delete Account
+  const handleDeleteAccount = async () => {
+    setShowDeleteModal(false); // Close modal
+    setNotificationMessage(null); // Clear any previous notification messages
 
-      const data = await response.json();
-      if (response.ok) {
-        setDeleteMessage({ type: "success", text: "Account deleted successfully!" });
-        logout();
+    try {
+      const res = await axios.delete(`${API_URL}/api/profile/account`, {
+        withCredentials: true,
+      });
+      if (res.status === 200) {
+        setNotificationMessage({ type: 'success', text: "Account deleted successfully. Logging out." });
+        setTimeout(() => logout(), 2000); // Log out after a short delay
       } else {
-        setDeleteMessage({ type: "error", text: data.error || "Failed to delete account." });
+        setNotificationMessage({ type: 'error', text: res.data.error || "Failed to delete account." });
       }
-      setShowDeleteModal(false);
-    } catch (error) {
-      console.error("Network error while deleting account:", error);
-      setDeleteMessage({ type: "error", text: "Network error while deleting account." });
-      setShowDeleteModal(false);
+    } catch (err) {
+      console.error("Network error while deleting account:", err);
+      setNotificationMessage({ type: 'error', text: err.response?.data?.error || "Failed to delete account." });
     }
   };
 
-  /**
-   * Handles updating the user's notification preferences.
-   * Sends a POST request to the backend with the new settings.
-   * Provides user feedback via `notificationMessage`.
-   */
+  // Handle Notification Update
   const handleNotificationUpdate = async () => {
-    setNotificationMessage(null);
-    if (!user?.token || !BACKEND_API_BASE_URL) {
-      setNotificationMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
-      return;
-    }
-
+    setNotificationMessage(null); // Clear previous messages
     try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/notifications`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({ emailNotifications, pushNotifications }),
+      const res = await axios.post(`${API_URL}/api/profile/notifications`, {
+        emailNotifications,
+        pushNotifications,
+      }, {
+        withCredentials: true,
       });
-
-      const data = await response.json();
-      if (response.ok) {
-        setNotificationMessage({ type: "success", text: "Notification settings updated!" });
+      if (res.status === 200) {
+        setNotificationMessage({ type: 'success', text: "Notification settings updated." });
       } else {
-        setNotificationMessage({ type: "error", text: data.error || "Failed to update settings." });
+        setNotificationMessage({ type: 'error', text: res.data.error || "Failed to update notification settings." });
       }
-    } catch (error) {
-      console.error("Notification update error:", error);
-      setNotificationMessage({ type: "error", text: "Network error while updating notifications." });
+    } catch (err) {
+      console.error("Error updating notifications:", err);
+      setNotificationMessage({ type: 'error', text: err.response?.data?.error || "Failed to update notification settings." });
     }
   };
 
-  /**
-   * Handles ending a specific user session.
-   * Sends a POST request to the backend to invalidate the session.
-   * Provides user feedback via `sessionMessage`.
-   */
-  const handleEndSession = async (sessionId) => {
-    setSessionMessage(null);
-    if (!user?.token || !BACKEND_API_BASE_URL) {
-      setSessionMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
-      return;
-    }
-    try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/sessions/end`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({ sessionId }),
-      });
+  if (loading) {
+    return (
+      <div style={{ background: bgColor, color: textColor, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p>Loading authentication...</p>
+      </div>
+    );
+  }
 
-      const data = await response.json();
-      if (response.ok) {
-        setSessions(sessions.filter((s) => s.id !== sessionId)); // Optimistic UI update
-        setSessionMessage({ type: "success", text: `Session ${sessionId} ended.` }); // Removed "(simulated)"
-      } else {
-        setSessionMessage({ type: "error", text: data.error || "Failed to end session." });
-      }
-    } catch (error) {
-      console.error("End session error:", error);
-      setSessionMessage({ type: "error", text: "Network error while ending session." });
-    }
-  };
-
+  if (!isAuthenticated) {
+    return (
+      <div style={{ background: bgColor, color: textColor, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p>Access Denied. Redirecting to login...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: bgColor, color: textColor, minHeight: "100vh", fontFamily: "Inter, sans-serif", overflowX: "hidden" }}>
@@ -349,7 +342,7 @@ export default function Profile() {
       <section
         style={{
           padding: "60px 20px",
-          maxWidth: "900px", // Increased max width for more content
+          maxWidth: "900px",
           margin: "60px auto",
           background: cardBgColor,
           borderRadius: "20px",
@@ -364,28 +357,78 @@ export default function Profile() {
       >
         <h2 style={{ fontSize: "2.8rem", fontWeight: "bold", color: accentColor }}>Your Profile</h2>
 
-        {/* User Identification & Basic Info - Made more prominent */}
+        {error && (
+          <div style={{
+            padding: "10px",
+            borderRadius: "8px",
+            background: "#F8D7DA",
+            color: "#721C24",
+            border: `1px solid #F5C6CB`,
+            marginBottom: "15px",
+            fontSize: "0.9rem",
+            textAlign: "center",
+            width: "100%",
+            maxWidth: "600px"
+          }}>
+            {error}
+          </div>
+        )}
+        {notificationMessage && (
+          <div style={{
+            padding: "10px",
+            borderRadius: "8px",
+            background: notificationMessage.type === 'success' ? "#D4EDDA" : "#F8D7DA",
+            color: notificationMessage.type === 'success' ? "#155724" : "#721C24",
+            border: `1px solid ${notificationMessage.type === 'success' ? "#C3E6CB" : "#F5C6CB"}`,
+            marginBottom: "15px",
+            fontSize: "0.9rem",
+            textAlign: "center",
+            width: "100%",
+            maxWidth: "600px"
+          }}>
+            {notificationMessage.text}
+          </div>
+        )}
+
+        {/* User Identification & Basic Info */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "15px", width: "100%" }}>
-          {currentUser?.photoURL && (
+          {profile?.profile_picture_url ? (
             <img
-              src={currentUser.photoURL}
-              alt={`${currentUser.displayName}'s profile`}
+              src={profile.profile_picture_url}
+              alt={`${profile.name}'s profile`}
               style={{
-                width: "140px", // Slightly larger photo
+                width: "140px",
                 height: "140px",
                 borderRadius: "50%",
                 objectFit: "cover",
-                border: `5px solid ${accentColor}`, // Thicker border
-                boxShadow: "0 6px 20px rgba(0,0,0,0.15)", // More pronounced shadow
+                border: `5px solid ${accentColor}`,
+                boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
               }}
+              onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/140x140/4CAF50/FFFFFF?text=👤"; }}
             />
+          ) : (
+            <div style={{
+              width: "140px",
+              height: "140px",
+              borderRadius: "50%",
+              background: accentColor,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "70px", // Larger font for initial
+              color: "#fff",
+              border: `5px solid ${accentColor}`,
+              boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
+            }}>
+              {profile?.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+            </div>
           )}
-          <p style={{ fontSize: "1rem", color: mutedTextColor, marginBottom: "-5px" }}>Logged in as:</p> {/* Explicit "Logged in as" */}
-          <h3 style={{ fontSize: "2.2rem", fontWeight: "bold", color: textColor }}> {/* Larger name font */}
-            {currentUser?.displayName || "User Name"}
+          <p style={{ fontSize: "1rem", color: mutedTextColor, marginBottom: "-5px" }}>Logged in as:</p>
+          <h3 style={{ fontSize: "2.2rem", fontWeight: "bold", color: textColor }}>
+            {profile?.name || "Loading Name..."}
           </h3>
-          <p style={{ fontSize: "1.2rem", color: mutedTextColor, marginTop: "5px" }}> {/* Larger email font */}
-            {currentUser?.email || "user@example.com"}
+          <p style={{ fontSize: "1.2rem", color: mutedTextColor, marginTop: "5px" }}>
+            {profile?.email || "Loading Email..."}
           </p>
           <p style={{ fontSize: "0.9rem", color: mutedTextColor, maxWidth: "600px", lineHeight: "1.5", marginTop: "15px" }}>
             This is your Pulse CRM profile. Here you can manage your account settings and preferences.
@@ -403,20 +446,6 @@ export default function Profile() {
           textAlign: "left",
         }}>
           <h3 style={{ fontSize: "1.8rem", fontWeight: "bold", color: accentColor, marginBottom: "10px" }}>Notification Preferences</h3>
-          {notificationMessage && (
-            <div style={{
-              padding: "10px",
-              borderRadius: "8px",
-              background: notificationMessage.type === 'success' ? "#D4EDDA" : "#F8D7DA",
-              color: notificationMessage.type === 'success' ? "#155724" : "#721C24",
-              border: `1px solid ${notificationMessage.type === 'success' ? "#C3E6CB" : "#F5C6CB"}`,
-              marginBottom: "15px",
-              fontSize: "0.9rem",
-              textAlign: "center",
-            }}>
-              {notificationMessage.text}
-            </div>
-          )}
           <div style={{
             background: theme === 'dark' ? "#1F2830" : "#F0F5F0",
             padding: "25px",
@@ -468,7 +497,7 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Session Management */}
+        {/* Session Management (Placeholder for now) */}
         <div style={{
           width: "100%",
           display: "flex",
@@ -479,20 +508,6 @@ export default function Profile() {
           textAlign: "left",
         }}>
           <h3 style={{ fontSize: "1.8rem", fontWeight: "bold", color: accentColor, marginBottom: "10px" }}>Active Sessions</h3>
-          {sessionMessage && (
-            <div style={{
-              padding: "10px",
-              borderRadius: "8px",
-              background: sessionMessage.type === 'success' ? "#D4EDDA" : "#F8D7DA",
-              color: sessionMessage.type === 'success' ? "#155724" : "#721C24",
-              border: `1px solid ${sessionMessage.type === 'success' ? "#C3E6CB" : "#F5C6CB"}`,
-              marginBottom: "15px",
-              fontSize: "0.9rem",
-              textAlign: "center",
-            }}>
-              {sessionMessage.text}
-            </div>
-          )}
           <div style={{
             background: theme === 'dark' ? "#1F2830" : "#F0F5F0",
             padding: "25px",
@@ -503,38 +518,11 @@ export default function Profile() {
             flexDirection: "column",
             gap: "10px",
           }}>
-            {sessions.length > 0 ? (
-              sessions.map(session => (
-                <div key={session.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px dashed ${cardBorderColor}` }}>
-                  <div>
-                    <p style={{ fontSize: "1rem", color: textColor, fontWeight: "500" }}>{session.device}</p>
-                    <p style={{ fontSize: "0.85rem", color: mutedTextColor }}>Last Active: {session.lastActive}</p>
-                  </div>
-                  <button
-                    onClick={() => handleEndSession(session.id)}
-                    style={{
-                      padding: "8px 15px",
-                      fontSize: "0.85rem",
-                      fontWeight: "bold",
-                      background: "#FF6347",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                      transition: "background 0.3s ease",
-                      "&:hover": { background: "#E5533D" },
-                    }}
-                  >
-                    End Session
-                  </button>
-                </div>
-              ))
-            ) : (
-              <p style={{ fontSize: "1rem", color: mutedTextColor, textAlign: "center" }}>No other active sessions.</p>
-            )}
+            <p style={{ fontSize: "1rem", color: mutedTextColor, textAlign: "center" }}>
+              Session management is not yet implemented in this version.
+            </p>
           </div>
         </div>
-
 
         {/* Google Account Connection & Delete Account */}
         <div style={{
@@ -561,20 +549,6 @@ export default function Profile() {
               Pulse CRM accesses your Google Contacts to display them in real-time. We **do not store** your Google Contacts data on our servers.
               Your privacy is paramount.
             </p>
-            {disconnectMessage && (
-              <div style={{
-                padding: "10px",
-                borderRadius: "8px",
-                background: disconnectMessage.type === 'success' ? "#D4EDDA" : "#F8D7DA",
-                color: disconnectMessage.type === 'success' ? "#155724" : "#721C24",
-                border: `1px solid ${disconnectMessage.type === 'success' ? "#C3E6CB" : "#F5C6CB"}`,
-                marginBottom: "15px",
-                fontSize: "0.9rem",
-                textAlign: "center",
-              }}>
-                {disconnectMessage.text}
-              </div>
-            )}
             <button
               onClick={() => setShowDisconnectModal(true)}
               style={{
@@ -596,68 +570,6 @@ export default function Profile() {
             >
               Disconnect Google Account
             </button>
-            {showDisconnectModal && (
-              <div style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                background: "rgba(0,0,0,0.6)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1000,
-              }}>
-                <div style={{
-                  background: cardBgColor,
-                  padding: "30px",
-                  borderRadius: "15px",
-                  boxShadow: "0 5px 20px rgba(0,0,0,0.2)",
-                  maxWidth: "450px",
-                  textAlign: "center",
-                  border: `1px solid ${cardBorderColor}`,
-                }}>
-                  <p style={{ fontSize: "1.2rem", color: textColor, marginBottom: "20px" }}>
-                    Are you sure you want to disconnect your Google account? This will prevent Pulse CRM from accessing your Google Contacts.
-                  </p>
-                  <div style={{ display: "flex", justifyContent: "center", gap: "15px" }}>
-                    <button
-                      onClick={handleDisconnectConfirm}
-                      style={{
-                        padding: "10px 20px",
-                        fontSize: "1rem",
-                        fontWeight: "bold",
-                        background: "#FF6347",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        "&:hover": { background: "#E5533D" },
-                      }}
-                    >
-                      Yes, Disconnect
-                    </button>
-                    <button
-                      onClick={() => setShowDisconnectModal(false)}
-                      style={{
-                        padding: "10px 20px",
-                        fontSize: "1rem",
-                        fontWeight: "bold",
-                        background: mutedTextColor,
-                        color: textColor,
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        "&:hover": { background: "#808080" },
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Delete Account */}
@@ -673,20 +585,6 @@ export default function Profile() {
             <p style={{ fontSize: "1rem", color: mutedTextColor, marginBottom: "20px" }}>
               Permanently delete your Pulse CRM account and all associated data. This action cannot be undone.
             </p>
-            {deleteMessage && (
-              <div style={{
-                padding: "10px",
-                borderRadius: "8px",
-                background: deleteMessage.type === 'success' ? "#D4EDDA" : "#F8D7DA",
-                color: deleteMessage.type === 'success' ? "#155724" : "#721C24",
-                border: `1px solid ${deleteMessage.type === 'success' ? "#C3E6CB" : "#F5C6CB"}`,
-                marginBottom: "15px",
-                fontSize: "0.9rem",
-                textAlign: "center",
-              }}>
-                {deleteMessage.text}
-              </div>
-            )}
             <button
               onClick={() => setShowDeleteModal(true)}
               style={{
@@ -708,71 +606,8 @@ export default function Profile() {
             >
               Delete My Account
             </button>
-            {showDeleteModal && (
-              <div style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: "100%",
-                background: "rgba(0,0,0,0.6)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1000,
-              }}>
-                <div style={{
-                  background: cardBgColor,
-                  padding: "30px",
-                  borderRadius: "15px",
-                  boxShadow: "0 5px 20px rgba(0,0,0,0.2)",
-                  maxWidth: "450px",
-                  textAlign: "center",
-                  border: `1px solid ${cardBorderColor}`,
-                }}>
-                  <p style={{ fontSize: "1.2rem", color: textColor, marginBottom: "20px" }}>
-                    Are you absolutely sure you want to delete your account? This action is irreversible.
-                  </p>
-                  <div style={{ display: "flex", justifyContent: "center", gap: "15px" }}>
-                    <button
-                      onClick={handleDeleteConfirm}
-                      style={{
-                        padding: "10px 20px",
-                        fontSize: "1rem",
-                        fontWeight: "bold",
-                        background: "#DC3545",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        "&:hover": { background: "#C82333" },
-                      }}
-                    >
-                      Yes, Delete Permanently
-                    </button>
-                    <button
-                      onClick={() => setShowDeleteModal(false)}
-                      style={{
-                        padding: "10px 20px",
-                        fontSize: "1rem",
-                        fontWeight: "bold",
-                        background: mutedTextColor,
-                        color: textColor,
-                        border: "none",
-                        borderRadius: "8px",
-                        cursor: "pointer",
-                        "&:hover": { background: "#808080" },
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
-
 
         {/* Privacy & Terms Links */}
         <div style={{ marginTop: "40px", display: "flex", gap: "25px", flexWrap: "wrap", justifyContent: "center" }}>
@@ -828,14 +663,47 @@ export default function Profile() {
           },
         }}
       >
-        <p>&copy; {new Date().getFullYear()} Pulse CRM. All rights reserved.</p>
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", justifyContent: "center" }}>
-          {/* Using the defined FooterLink component */}
-          <FooterLink label="Privacy Policy" path="/privacy.html" />
-          <FooterLink label="Terms of Service" path="/terms.html" />
-          <FooterLink label="Affiliate" path="/affiliate.html" />
+        <p style={{ margin: 0, fontSize: "0.9rem" }}>
+          &copy; {new Date().getFullYear()} Pulse CRM. All rights reserved.
+        </p>
+        <div style={{ display: "flex", gap: "20px" }}>
+          <FooterLink label="About Us" path="/about" />
+          <FooterLink label="Support" path="/support" />
+          <FooterLink label="Contact" path="/contact" />
         </div>
       </footer>
+
+      {/* Disconnect Google Modal */}
+      {showDisconnectModal && (
+        <ConfirmationModal
+          message="Are you sure you want to disconnect your Google account? This will prevent Pulse CRM from accessing your Google Contacts."
+          onConfirm={handleDisconnectGoogle}
+          onCancel={() => setShowDisconnectModal(false)}
+          confirmText="Yes, Disconnect"
+          cancelText="Cancel"
+          accentColor="#FF6347" // Tomato red for disconnect
+          cardBgColor={cardBgColor}
+          textColor={textColor}
+          mutedTextColor={mutedTextColor}
+          cardBorderColor={cardBorderColor}
+        />
+      )}
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <ConfirmationModal
+          message="Are you absolutely sure you want to permanently delete your account? This action is irreversible."
+          onConfirm={handleDeleteAccount}
+          onCancel={() => setShowDeleteModal(false)}
+          confirmText="Yes, Delete Permanently"
+          cancelText="Cancel"
+          accentColor="#DC3545" // Red for danger
+          cardBgColor={cardBgColor}
+          textColor={textColor}
+          mutedTextColor={mutedTextColor}
+          cardBorderColor={cardBorderColor}
+        />
+      )}
     </div>
   );
 }
