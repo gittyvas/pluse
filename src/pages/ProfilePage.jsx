@@ -1,8 +1,9 @@
 // google-oauth-app/frontend/src/pages/Profile.jsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import axios from 'axios'; // Import axios
 
 // Reusable FooterLink Component
 const FooterLink = ({ label, path }) => {
@@ -30,11 +31,14 @@ const FooterLink = ({ label, path }) => {
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { isAuthenticated, currentUser, logout, user, theme, toggleTheme } = useAuth();
+  const { isAuthenticated, user, logout, theme, toggleTheme } = useAuth(); // Removed currentUser as we'll fetch profile directly
 
   // State for modals
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // State for user profile data fetched from backend
+  const [profile, setProfile] = useState(null); // New state to store fetched profile data
 
   // State for notifications - initialized with default values, will be updated by fetch
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -60,8 +64,8 @@ export default function Profile() {
   const headerBorderColor = theme === 'dark' ? "#3A454F" : "#E8E8E8";
 
   // Define your backend base URL from environment variable
-  // This environment variable MUST be set in your frontend's build process/hosting config
-  const BACKEND_API_BASE_URL = process.env.REACT_APP_BACKEND_API_BASE_URL;
+  // Use import.meta.env.VITE_API_URL for Vite projects
+  const VITE_API_URL = import.meta.env.VITE_API_URL;
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -71,53 +75,51 @@ export default function Profile() {
   }, [isAuthenticated, user, navigate]);
 
   // Effect to fetch user profile data from backend
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!isAuthenticated || !user?.token || !BACKEND_API_BASE_URL) {
-        console.error("ProfilePage: Missing authentication, token, or backend URL. Cannot fetch profile.");
-        return;
-      }
-
-      try {
-        const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile`, {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${user.token}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.status === 401 || response.status === 403) {
-          console.error("ProfilePage: API: Session expired or invalid token. Logging out.");
-          logout();
-          return;
-        }
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Failed to fetch profile: ${response.status} ${response.statusText} - ${errorText}`);
-        }
-
-        const data = await response.json();
-
-        // Update notification settings state with fetched data
-        if (data.emailNotifications !== undefined) {
-          setEmailNotifications(data.emailNotifications);
-        }
-        if (data.pushNotifications !== undefined) {
-          setPushNotifications(data.pushNotifications);
-        }
-        // If real sessions were fetched from backend, setSessions(data.sessions) here
-      } catch (err) {
-        console.error("ProfilePage: Error fetching user profile:", err);
-        // Optionally set an error message to display to the user
-      }
-    };
-
-    if (isAuthenticated && user?.token && BACKEND_API_BASE_URL) {
-      fetchUserProfile();
+  const fetchUserProfile = useCallback(async () => {
+    // No need for user?.token in headers, as withCredentials will send the cookie
+    if (!isAuthenticated || !VITE_API_URL) {
+      console.error("ProfilePage: Missing authentication or backend URL. Cannot fetch profile.");
+      return;
     }
-  }, [isAuthenticated, user, logout, BACKEND_API_BASE_URL]);
+
+    try {
+      const response = await axios.get(`${VITE_API_URL}/api/user/profile`, {
+        withCredentials: true, // IMPORTANT: Ensures cookies are sent
+      });
+
+      const data = response.data; // Axios puts response data in .data
+
+      // Update profile state
+      setProfile(data);
+
+      // Update notification settings state with fetched data
+      if (data.emailNotifications !== undefined) {
+        setEmailNotifications(data.emailNotifications);
+      }
+      if (data.pushNotifications !== undefined) {
+        setPushNotifications(data.pushNotifications);
+      }
+      // If real sessions were fetched from backend, setSessions(data.sessions) here
+      if (data.sessions) { // Assuming backend returns a 'sessions' array
+        setSessions(data.sessions);
+      }
+
+    } catch (err) {
+      console.error("ProfilePage: Error fetching user profile:", err);
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.error("ProfilePage: API: Session expired or invalid token. Logging out.");
+        logout(); // Log out on 401/403
+      } else {
+        // Optionally set an error message to display to the user
+        // setErrorFetchingProfile(true);
+      }
+    }
+  }, [isAuthenticated, VITE_API_URL, logout]);
+
+  useEffect(() => {
+    fetchUserProfile();
+  }, [fetchUserProfile]);
+
 
   /**
    * Handles the confirmation of disconnecting the Google account.
@@ -126,30 +128,25 @@ export default function Profile() {
    */
   const handleDisconnectConfirm = async () => {
     setDisconnectMessage(null);
-    if (!user?.token || !BACKEND_API_BASE_URL) {
-      setDisconnectMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
+    if (!VITE_API_URL) {
+      setDisconnectMessage({ type: 'error', text: 'Backend URL missing. Please log in again.' });
       return;
     }
     try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/disconnect`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${user.token}`,
-        },
+      const response = await axios.post(`${VITE_API_URL}/api/profile/disconnect`, {}, {
+        withCredentials: true, // IMPORTANT: Ensures cookies are sent
       });
 
-      const data = await response.json();
-      if (response.ok) {
+      if (response.status === 200) { // Axios uses status directly
         setDisconnectMessage({ type: "success", text: "Google account disconnected successfully!" });
-        logout();
+        logout(); // Log out after successful disconnect
       } else {
-        setDisconnectMessage({ type: "error", text: data.error || "Failed to disconnect Google account." });
+        setDisconnectMessage({ type: "error", text: response.data.error || "Failed to disconnect Google account." });
       }
       setShowDisconnectModal(false);
     } catch (error) {
       console.error("Network error while disconnecting:", error);
-      setDisconnectMessage({ type: "error", text: "Network error while disconnecting." });
+      setDisconnectMessage({ type: "error", text: error.response?.data?.error || "Network error while disconnecting." });
       setShowDisconnectModal(false);
     }
   };
@@ -161,30 +158,25 @@ export default function Profile() {
    */
   const handleDeleteConfirm = async () => {
     setDeleteMessage(null);
-    if (!user?.token || !BACKEND_API_BASE_URL) {
-      setDeleteMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
+    if (!VITE_API_URL) {
+      setDeleteMessage({ type: 'error', text: 'Backend URL missing. Please log in again.' });
       return;
     }
     try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/account`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${user.token}`,
-        },
+      const response = await axios.delete(`${VITE_API_URL}/api/profile/account`, {
+        withCredentials: true, // IMPORTANT: Ensures cookies are sent
       });
 
-      const data = await response.json();
-      if (response.ok) {
+      if (response.status === 200) {
         setDeleteMessage({ type: "success", text: "Account deleted successfully!" });
-        logout();
+        logout(); // Log out after successful deletion
       } else {
-        setDeleteMessage({ type: "error", text: data.error || "Failed to delete account." });
+        setDeleteMessage({ type: "error", text: response.data.error || "Failed to delete account." });
       }
       setShowDeleteModal(false);
     } catch (error) {
       console.error("Network error while deleting account:", error);
-      setDeleteMessage({ type: "error", text: "Network error while deleting account." });
+      setDeleteMessage({ type: "error", text: error.response?.data?.error || "Network error while deleting account." });
       setShowDeleteModal(false);
     }
   };
@@ -196,30 +188,27 @@ export default function Profile() {
    */
   const handleNotificationUpdate = async () => {
     setNotificationMessage(null);
-    if (!user?.token || !BACKEND_API_BASE_URL) {
-      setNotificationMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
+    if (!VITE_API_URL) {
+      setNotificationMessage({ type: 'error', text: 'Backend URL missing. Please log in again.' });
       return;
     }
 
     try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/notifications`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({ emailNotifications, pushNotifications }),
+      const response = await axios.post(`${VITE_API_URL}/api/profile/notifications`, {
+        emailNotifications,
+        pushNotifications
+      }, {
+        withCredentials: true, // IMPORTANT: Ensures cookies are sent
       });
 
-      const data = await response.json();
-      if (response.ok) {
+      if (response.status === 200) {
         setNotificationMessage({ type: "success", text: "Notification settings updated!" });
       } else {
-        setNotificationMessage({ type: "error", text: data.error || "Failed to update settings." });
+        setNotificationMessage({ type: "error", text: response.data.error || "Failed to update settings." });
       }
     } catch (error) {
       console.error("Notification update error:", error);
-      setNotificationMessage({ type: "error", text: "Network error while updating notifications." });
+      setNotificationMessage({ type: "error", text: error.response?.data?.error || "Network error while updating notifications." });
     }
   };
 
@@ -230,30 +219,24 @@ export default function Profile() {
    */
   const handleEndSession = async (sessionId) => {
     setSessionMessage(null);
-    if (!user?.token || !BACKEND_API_BASE_URL) {
-      setSessionMessage({ type: 'error', text: 'Authentication token or backend URL missing. Please log in again.' });
+    if (!VITE_API_URL) {
+      setSessionMessage({ type: 'error', text: 'Backend URL missing. Please log in again.' });
       return;
     }
     try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/profile/sessions/end`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${user.token}`,
-        },
-        body: JSON.stringify({ sessionId }),
+      const response = await axios.post(`${VITE_API_URL}/api/profile/sessions/end`, { sessionId }, {
+        withCredentials: true, // IMPORTANT: Ensures cookies are sent
       });
 
-      const data = await response.json();
-      if (response.ok) {
+      if (response.status === 200) {
         setSessions(sessions.filter((s) => s.id !== sessionId)); // Optimistic UI update
-        setSessionMessage({ type: "success", text: `Session ${sessionId} ended.` }); // Removed "(simulated)"
+        setSessionMessage({ type: "success", text: `Session ${sessionId} ended.` });
       } else {
-        setSessionMessage({ type: "error", text: data.error || "Failed to end session." });
+        setSessionMessage({ type: "error", text: response.data.error || "Failed to end session." });
       }
     } catch (error) {
       console.error("End session error:", error);
-      setSessionMessage({ type: "error", text: "Network error while ending session." });
+      setSessionMessage({ type: "error", text: error.response?.data?.error || "Network error while ending session." });
     }
   };
 
@@ -366,10 +349,10 @@ export default function Profile() {
 
         {/* User Identification & Basic Info - Made more prominent */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "15px", width: "100%" }}>
-          {currentUser?.photoURL && (
+          {profile?.profile_picture_url && ( // Use profile.profile_picture_url
             <img
-              src={currentUser.photoURL}
-              alt={`${currentUser.displayName}'s profile`}
+              src={profile.profile_picture_url}
+              alt={`${profile.name}'s profile`}
               style={{
                 width: "140px", // Slightly larger photo
                 height: "140px",
@@ -380,12 +363,12 @@ export default function Profile() {
               }}
             />
           )}
-          <p style={{ fontSize: "1rem", color: mutedTextColor, marginBottom: "-5px" }}>Logged in as:</p> {/* Explicit "Logged in as" */}
-          <h3 style={{ fontSize: "2.2rem", fontWeight: "bold", color: textColor }}> {/* Larger name font */}
-            {currentUser?.displayName || "User Name"}
+          <p style={{ fontSize: "1rem", color: mutedTextColor, marginBottom: "-5px" }}>Logged in as:</p>
+          <h3 style={{ fontSize: "2.2rem", fontWeight: "bold", color: textColor }}>
+            {profile?.name || "User Name"} {/* Use profile.name */}
           </h3>
-          <p style={{ fontSize: "1.2rem", color: mutedTextColor, marginTop: "5px" }}> {/* Larger email font */}
-            {currentUser?.email || "user@example.com"}
+          <p style={{ fontSize: "1.2rem", color: mutedTextColor, marginTop: "5px" }}>
+            {profile?.email || "No Email Provided"} {/* Use profile.email, remove dummy */}
           </p>
           <p style={{ fontSize: "0.9rem", color: mutedTextColor, maxWidth: "600px", lineHeight: "1.5", marginTop: "15px" }}>
             This is your Pulse CRM profile. Here you can manage your account settings and preferences.
@@ -828,14 +811,18 @@ export default function Profile() {
           },
         }}
       >
-        <p>&copy; {new Date().getFullYear()} Pulse CRM. All rights reserved.</p>
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", justifyContent: "center" }}>
-          {/* Using the defined FooterLink component */}
-          <FooterLink label="Privacy Policy" path="/privacy.html" />
-          <FooterLink label="Terms of Service" path="/terms.html" />
-          <FooterLink label="Affiliate" path="/affiliate.html" />
+        <p style={{ margin: 0, fontSize: "0.9rem" }}>
+          &copy; {new Date().getFullYear()} Pulse CRM. All rights reserved.
+        </p>
+        <div style={{ display: "flex", gap: "20px" }}>
+          <FooterLink label="About Us" path="/about" />
+          <FooterLink label="Support" path="/support" />
+          <FooterLink label="Contact" path="/contact" />
         </div>
       </footer>
+
+      {/* Modals for Disconnect and Delete Confirmation (already present, just ensure styling) */}
+      {/* These modals are defined inline in the JSX, so no separate modal components are needed */}
     </div>
   );
 }
