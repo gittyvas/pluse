@@ -13,7 +13,7 @@ function Contacts() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch('http://localhost:3000/api/contacts/list', {
+        const response = await fetch('https://backend.gitthit.com.ng/api/contacts/list', {
           credentials: 'include'
         });
         if (response.ok) {

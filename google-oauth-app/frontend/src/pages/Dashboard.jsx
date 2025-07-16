@@ -18,7 +18,7 @@ export default function Dashboard({
   const [dataLoading, setDataLoading] = useState(!dashboardSummaryData);
   const [error, setError] = useState(null);
 
-  const BACKEND_API_BASE_URL = "http://localhost:3000";
+  const BACKEND_API_BASE_URL = "https://backend.gitthit.com.ng";
 
   useEffect(() => {
     // Redirect to login if AuthContext indicates not authenticated after its own loading
