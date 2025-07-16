@@ -1,159 +1,122 @@
-// google-oauth-app/frontend/src/components/NoteTable.jsx
+import React, { useState, useEffect } from 'react';
+import { Pencil, Trash2, PlusCircle } from 'lucide-react';
 
-import React, { useState } from 'react';
-import { Pencil, Trash2, PlusCircle } from 'lucide-react'; // Icons
-
-function NoteTable({ notes, onAdd, onEdit, onDelete }) {
+function NoteTable() {
+  const [notes, setNotes] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentNote, setCurrentNote] = useState(null); // For editing
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
+  const [currentNoteId, setCurrentNoteId] = useState(null);
 
-  const openAddModal = () => {
-    setCurrentNote(null);
-    setNoteTitle('');
-    setNoteContent('');
-    setIsModalOpen(true);
-  };
+  // Fetch notes on mount
+  useEffect(() => {
+    fetch('/api/notes', { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => setNotes(data))
+      .catch(err => console.error("Fetch notes failed:", err));
+  }, []);
 
-  const openEditModal = (note) => {
-    setCurrentNote(note);
-    setNoteTitle(note.title);
-    setNoteContent(note.content);
+  const openModal = (note = null) => {
     setIsModalOpen(true);
+    setCurrentNoteId(note?.id || null);
+    setNoteTitle(note?.title || '');
+    setNoteContent(note?.content || '');
   };
 
   const handleSave = async () => {
-    if (!noteTitle || !noteContent) {
-      alert('Title and content cannot be empty.');
+    if (!noteTitle || !noteContent) return alert("Title and content are required");
+
+    const method = currentNoteId ? 'PUT' : 'POST';
+    const url = currentNoteId ? `/api/notes/${currentNoteId}` : '/api/notes';
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ title: noteTitle, content: noteContent }),
+    });
+
+    if (!res.ok) {
+      alert('Error saving note');
       return;
     }
 
-    if (currentNote) {
-      await onEdit(currentNote.id, { title: noteTitle, content: noteContent });
-    } else {
-      await onAdd({ title: noteTitle, content: noteContent });
-    }
+    const updatedNote = await res.json();
+    setNotes(prev =>
+      currentNoteId
+        ? prev.map(n => (n.id === updatedNote.id ? updatedNote : n))
+        : [updatedNote, ...prev]
+    );
+
     setIsModalOpen(false);
   };
 
-  if (!notes || notes.length === 0) {
-    return (
-      <div className="p-6 bg-gray-700 rounded-lg shadow-md text-gray-300 text-center">
-        No notes yet. Click the "Add Note" button to create one!
-        <button
-          onClick={openAddModal}
-          className="mt-4 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-md flex items-center justify-center mx-auto transition-colors duration-200"
-        >
-          <PlusCircle className="w-5 h-5 mr-2" /> Add Note
-        </button>
+  const handleDelete = async (id) => {
+    const res = await fetch(`/api/notes/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
 
-        {/* Note Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md">
-              <h3 className="text-2xl font-bold text-white mb-6">{currentNote ? 'Edit Note' : 'Add New Note'}</h3>
-              <input
-                type="text"
-                placeholder="Note Title"
-                className="w-full p-3 mb-4 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-green-500"
-                value={noteTitle}
-                onChange={(e) => setNoteTitle(e.target.value)}
-              />
-              <textarea
-                placeholder="Note Content"
-                rows="6"
-                className="w-full p-3 mb-6 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-green-500"
-                value={noteContent}
-                onChange={(e) => setNoteContent(e.target.value)}
-              ></textarea>
-              <div className="flex justify-end space-x-4">
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSave}
-                  className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors duration-200"
-                >
-                  {currentNote ? 'Update Note' : 'Create Note'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
+    if (res.ok) {
+      setNotes(prev => prev.filter(note => note.id !== id));
+    }
+  };
 
   return (
-    <div className="bg-gray-700 rounded-lg shadow-md overflow-hidden">
-      <div className="flex justify-end p-4 bg-gray-600">
-        <button
-          onClick={openAddModal}
-          className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-md flex items-center transition-colors duration-200"
-        >
+    <div className="p-6 bg-gray-800 rounded-lg">
+      <div className="flex justify-between mb-4">
+        <h2 className="text-white text-2xl font-bold">Notes</h2>
+        <button onClick={() => openModal()} className="text-white bg-green-600 px-4 py-2 rounded flex items-center">
           <PlusCircle className="w-5 h-5 mr-2" /> Add Note
         </button>
       </div>
-      <div className="divide-y divide-gray-600">
-        {notes.map((note) => (
-          <div key={note.id} className="p-6 hover:bg-gray-600 transition-colors duration-150">
-            <div className="flex justify-between items-start mb-2">
-              <h3 className="text-xl font-semibold text-white">{note.title}</h3>
+
+      {notes.length === 0 ? (
+        <p className="text-gray-300">No notes found.</p>
+      ) : (
+        notes.map(note => (
+          <div key={note.id} className="bg-gray-700 p-4 mb-3 rounded-md">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-white font-semibold text-lg">{note.title}</h3>
+                <p className="text-gray-300">{note.content}</p>
+                <p className="text-sm text-gray-400 mt-2">Updated: {new Date(note.updated_at).toLocaleString()}</p>
+              </div>
               <div className="flex space-x-3">
-                <button onClick={() => openEditModal(note)} className="text-blue-400 hover:text-blue-300 transition-colors duration-150">
-                  <Pencil className="w-5 h-5" />
+                <button onClick={() => openModal(note)} className="text-blue-400 hover:text-blue-300">
+                  <Pencil />
                 </button>
-                <button onClick={() => onDelete(note.id)} className="text-red-400 hover:text-red-300 transition-colors duration-150">
-                  <Trash2 className="w-5 h-5" />
+                <button onClick={() => handleDelete(note.id)} className="text-red-400 hover:text-red-300">
+                  <Trash2 />
                 </button>
               </div>
             </div>
-            <p className="text-gray-300 mb-2">{note.content}</p>
-            <p className="text-xs text-gray-400">
-              Created: {note.createdAt ? new Date(note.createdAt._seconds * 1000).toLocaleString() : 'N/A'}
-              {note.updatedAt && note.updatedAt._seconds !== note.createdAt._seconds && (
-                <span> | Updated: {new Date(note.updatedAt._seconds * 1000).toLocaleString()}</span>
-              )}
-            </p>
           </div>
-        ))}
-      </div>
+        ))
+      )}
 
-      {/* Note Modal */}
+      {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md">
-            <h3 className="text-2xl font-bold text-white mb-6">{currentNote ? 'Edit Note' : 'Add New Note'}</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-900 p-6 rounded-lg w-full max-w-md">
+            <h3 className="text-white text-xl mb-4">{currentNoteId ? 'Edit Note' : 'Add Note'}</h3>
             <input
               type="text"
-              placeholder="Note Title"
-              className="w-full p-3 mb-4 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-green-500"
               value={noteTitle}
               onChange={(e) => setNoteTitle(e.target.value)}
+              placeholder="Note Title"
+              className="w-full mb-3 p-2 rounded bg-gray-700 text-white border border-gray-600"
             />
             <textarea
-              placeholder="Note Content"
-              rows="6"
-              className="w-full p-3 mb-6 bg-gray-700 border border-gray-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:border-green-500"
+              rows="4"
               value={noteContent}
               onChange={(e) => setNoteContent(e.target.value)}
-            ></textarea>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-md transition-colors duration-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors duration-200"
-              >
-                {currentNote ? 'Update Note' : 'Create Note'}
+              placeholder="Note Content"
+              className="w-full mb-4 p-2 rounded bg-gray-700 text-white border border-gray-600"
+            />
+            <div className="flex justify-end space-x-2">
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-600 text-white rounded">Cancel</button>
+              <button onClick={handleSave} className="px-4 py-2 bg-green-600 text-white rounded">
+                {currentNoteId ? 'Update' : 'Create'}
               </button>
             </div>
           </div>
