@@ -6,8 +6,20 @@ import { useAuth } from "../context/AuthContext";
 
 export default function ContactsPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, loading, logout } = useAuth(); // Removed 'user' as its token is not directly used in header
-  const accent = "#25D366";
+  // Get theme from useAuth
+  const { isAuthenticated, loading, logout, theme } = useAuth();
+  const accent = "#25D366"; // This remains the primary accent color
+
+  // Define colors based on theme
+  const bgColor = theme === 'dark' ? "#1A222A" : "#F8FBF8";
+  const textColor = theme === 'dark' ? "#E0E6EB" : "#303030";
+  const accentColor = "#4CAF50"; // Soft green accent for general elements, distinct from primary accent
+  const cardBgColor = theme === 'dark' ? "linear-gradient(145deg, #2A343D, #1F2830)" : "linear-gradient(145deg, #FFFFFF, #F0F5F0)";
+  const cardBorderColor = theme === 'dark' ? "#3A454F" : "#E0E5E0";
+  const mutedTextColor = theme === 'dark' ? "#A0A8B0" : "#606060";
+  const inputBgColor = theme === 'dark' ? "#2A2E31" : "#EFEFEF"; // Specific for input fields
+  const inputBorderColor = theme === 'dark' ? "#444" : "#CCC"; // Specific for input fields
+
 
   const [contacts, setContacts] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
@@ -19,11 +31,23 @@ export default function ContactsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Simulate pin/unpin logic using local state (for now, not persistent)
-  const [pinnedIds, setPinnedIds] = useState([]);
+  const [pinnedIds, setPinnedIds] = useState(() => {
+    // Initialize pinnedIds from localStorage
+    try {
+      const storedPinned = localStorage.getItem('pinnedContacts');
+      return storedPinned ? JSON.parse(storedPinned) : [];
+    } catch (e) {
+      console.error("Failed to parse pinned contacts from localStorage", e);
+      return [];
+    }
+  });
+
   const togglePinContact = (contactId) => {
-    setPinnedIds((prev) =>
-      prev.includes(contactId) ? prev.filter((id) => id !== contactId) : [...prev, contactId]
-    );
+    setPinnedIds((prev) => {
+      const newPinned = prev.includes(contactId) ? prev.filter((id) => id !== contactId) : [...prev, contactId];
+      localStorage.setItem('pinnedContacts', JSON.stringify(newPinned)); // Persist to localStorage
+      return newPinned;
+    });
   };
 
   // --- CORRECTED: Use environment variable for backend URL ---
@@ -44,7 +68,6 @@ export default function ContactsPage() {
       console.log("ContactsPage: Attempting to fetch contacts from backend.");
       const response = await fetch(`${BACKEND_API_BASE_URL}/api/contacts`, {
         method: "GET",
-        // --- CORRECTED: Rely on HTTP-only cookie, ensure credentials: 'include' ---
         credentials: 'include', // Ensures HTTP-only cookie is sent automatically
         headers: {
           "Content-Type": "application/json",
@@ -95,7 +118,7 @@ export default function ContactsPage() {
     } finally {
       setDataLoading(false);
     }
-  }, [isAuthenticated, loading, logout]); // Dependencies for fetchContacts
+  }, [isAuthenticated, loading, logout, BACKEND_API_BASE_URL]); // Dependencies for fetchContacts
 
 
   useEffect(() => {
@@ -223,7 +246,7 @@ export default function ContactsPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#181C1F", color: "#fff" }}>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: bgColor, color: textColor }}>
         <p>Loading authentication...</p>
       </div>
     );
@@ -238,23 +261,23 @@ export default function ContactsPage() {
   }
 
   return (
-    <div style={{ background: "#181C1F", color: "#fff", minHeight: "100vh", padding: "32px" }}>
-      <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "30px", color: accent }}>Your Contacts</h1>
+    <div style={{ background: bgColor, color: textColor, minHeight: "100vh", padding: "32px", fontFamily: "Inter, sans-serif" }}>
+      <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "30px", color: accentColor }}>Your Contacts</h1>
 
       <button
         onClick={() => navigate("/dashboard")}
         style={{
           marginBottom: "20px",
           padding: "10px 20px",
-          background: "#333",
-          color: "white",
+          background: mutedTextColor, // Use mutedTextColor for back button
+          color: textColor,
           border: "none",
           borderRadius: "8px",
           cursor: "pointer",
           transition: "background 0.2s",
         }}
-        onMouseOver={(e) => (e.currentTarget.style.background = "#555")}
-        onMouseOut={(e) => (e.currentTarget.style.background = "#333")}
+        onMouseOver={(e) => (e.currentTarget.style.background = theme === 'dark' ? "#555" : "#CCC")}
+        onMouseOut={(e) => (e.currentTarget.style.background = mutedTextColor)}
       >
         ← Back to Dashboard
       </button>
@@ -278,31 +301,31 @@ export default function ContactsPage() {
             padding: "12px 15px",
             fontSize: "1rem",
             borderRadius: "8px",
-            border: "1px solid #444",
-            background: "#2A2E31",
-            color: "#fff",
+            border: `1px solid ${inputBorderColor}`, // Use themed border
+            background: inputBgColor, // Use themed background
+            color: textColor, // Use themed text color
             outline: "none",
             boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
             transition: "border-color 0.2s, box-shadow 0.2s",
           }}
           onFocus={(e) => {
-            e.currentTarget.style.borderColor = accent;
-            e.currentTarget.style.boxShadow = `0 0 0 3px ${accent}40`; // Soft glow
+            e.currentTarget.style.borderColor = accentColor; // Use themed accent
+            e.currentTarget.style.boxShadow = `0 0 0 3px ${accentColor}40`; // Soft glow
           }}
           onBlur={(e) => {
-            e.currentTarget.style.borderColor = "#444";
+            e.currentTarget.style.borderColor = inputBorderColor; // Use themed border
             e.currentTarget.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
           }}
         />
       </div>
 
       {/* Export Buttons */}
-      <div style={{ marginBottom: "30px", display: "flex", gap: "15px", justifyContent: "flex-end" }}>
+      <div style={{ marginBottom: "30px", display: "flex", gap: "15px", justifyContent: "flex-end", flexWrap: "wrap" }}>
         <button
           onClick={handleExportCSV}
           style={{
             padding: "10px 20px",
-            background: "#007BFF",
+            background: "#007BFF", // Blue for CSV export
             color: "white",
             border: "none",
             borderRadius: "8px",
@@ -319,7 +342,7 @@ export default function ContactsPage() {
           onClick={handleExportVCard}
           style={{
             padding: "10px 20px",
-            background: "#28A745",
+            background: "#28A745", // Green for vCard export
             color: "white",
             border: "none",
             borderRadius: "8px",
@@ -335,17 +358,17 @@ export default function ContactsPage() {
       </div>
 
       {dataLoading ? (
-        <p style={{ fontSize: "1.2rem", color: "#CCC", textAlign: "center" }}>Loading contacts...</p>
-      ) : filteredContacts.length === 0 && searchQuery ? ( // Show message if no results for a search
-        <p style={{ fontSize: "1.2rem", color: "#CCC", textAlign: "center" }}>No contacts match your search query.</p>
-      ) : filteredContacts.length === 0 && !searchQuery ? ( // Show message if no contacts at all
-        <p style={{ fontSize: "1.2rem", color: "#CCC", textAlign: "center" }}>No contacts found or imported from Google.</p>
+        <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center" }}>Loading contacts...</p>
+      ) : filteredContacts.length === 0 && searchQuery ? (
+        <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center" }}>No contacts match your search query.</p>
+      ) : filteredContacts.length === 0 && !searchQuery ? (
+        <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center" }}>No contacts found or imported from Google.</p>
       ) : (
         <>
           {/* Pinned Contacts Section */}
           {pinnedContacts.length > 0 && (
             <div style={{ marginBottom: "40px" }}>
-              <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accent }}>
+              <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accentColor }}> {/* Use accentColor */}
                 Pinned Contacts ⭐
               </h2>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
@@ -353,10 +376,16 @@ export default function ContactsPage() {
                   <ContactCard
                     key={contact.id}
                     contact={contact}
-                    accent={accent}
+                    accent={accent} // Keep original accent for photo border
+                    accentColor={accentColor} // Pass new accentColor for other elements
                     isPinned={true}
                     onTogglePin={togglePinContact}
                     onClick={() => handleContactClick(contact)}
+                    cardBgColor={cardBgColor}
+                    cardBorderColor={cardBorderColor}
+                    textColor={textColor}
+                    mutedTextColor={mutedTextColor}
+                    theme={theme} // Pass theme for conditional styling in card
                   />
                 ))}
               </div>
@@ -364,7 +393,7 @@ export default function ContactsPage() {
           )}
 
           {/* All Other Contacts Section */}
-          <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accent }}>
+          <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accentColor }}> {/* Use accentColor */}
             All Contacts
           </h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
@@ -372,10 +401,16 @@ export default function ContactsPage() {
               <ContactCard
                 key={contact.id}
                 contact={contact}
-                accent={accent}
+                accent={accent} // Keep original accent for photo border
+                accentColor={accentColor} // Pass new accentColor for other elements
                 isPinned={false}
                 onTogglePin={togglePinContact}
                 onClick={() => handleContactClick(contact)}
+                cardBgColor={cardBgColor}
+                cardBorderColor={cardBorderColor}
+                textColor={textColor}
+                mutedTextColor={mutedTextColor}
+                theme={theme} // Pass theme for conditional styling in card
               />
             ))}
           </div>
@@ -388,7 +423,12 @@ export default function ContactsPage() {
           contact={selectedContact}
           onClose={closeContactDetailsModal}
           accent={accent}
-          generateVCard={generateVCard} // Pass generateVCard to the modal
+          accentColor={accentColor} // Pass new accentColor
+          generateVCard={generateVCard}
+          cardBgColor={cardBgColor}
+          textColor={textColor}
+          mutedTextColor={mutedTextColor}
+          theme={theme} // Pass theme for modal styling
         />
       )}
     </div>
@@ -396,31 +436,32 @@ export default function ContactsPage() {
 }
 
 // --- ContactCard Component ---
-function ContactCard({ contact, accent, isPinned, onTogglePin, onClick }) {
+function ContactCard({ contact, accent, accentColor, isPinned, onTogglePin, onClick, cardBgColor, cardBorderColor, textColor, mutedTextColor, theme }) {
+  const isDark = theme === 'dark';
   return (
     <div
       style={{
-        border: `1px solid ${isPinned ? "#FFD700" : "#333"}`, // Gold border for pinned
+        border: `1px solid ${isPinned ? "#FFD700" : cardBorderColor}`, // Gold for pinned, themed for unpinned
         borderRadius: "8px",
         padding: "20px",
-        background: isPinned ? "#3A3A20" : "#2A2E31", // Darker background for pinned
+        background: isPinned ? (isDark ? "#3A3A20" : "#FFFBE6") : cardBgColor, // Darker/Lighter background for pinned
         boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         gap: "10px",
         transition: "transform 0.2s, background 0.2s, border-color 0.2s",
-        position: "relative", // For pin button positioning
-        cursor: "pointer", // Indicate clickable
+        position: "relative",
+        cursor: "pointer",
       }}
       onMouseOver={(e) => (e.currentTarget.style.transform = "translateY(-5px)")}
       onMouseOut={(e) => (e.currentTarget.style.transform = "translateY(0)")}
-      onClick={onClick} // Handle click for modal
+      onClick={onClick}
     >
       {/* Pin/Unpin Button */}
       <button
         onClick={(e) => {
-          e.stopPropagation(); // Prevent modal from opening when clicking pin
+          e.stopPropagation();
           onTogglePin(contact.id);
         }}
         style={{
@@ -431,7 +472,7 @@ function ContactCard({ contact, accent, isPinned, onTogglePin, onClick }) {
           border: "none",
           cursor: "pointer",
           fontSize: "24px",
-          color: isPinned ? "#FFD700" : "#888", // Gold for pinned, grey for unpinned
+          color: isPinned ? "#FFD700" : mutedTextColor, // Gold for pinned, themed grey for unpinned
           transition: "color 0.2s",
         }}
       >
@@ -443,21 +484,21 @@ function ContactCard({ contact, accent, isPinned, onTogglePin, onClick }) {
           src={contact.photo}
           alt={contact.name}
           style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", border: `2px solid ${accent}` }}
-          onError={(e) => { e.target.onerror = null; e.target.src="https://placehold.co/80x80/25D366/FFFFFF?text=👤"; }} // Fallback image
+          onError={(e) => { e.target.onerror = null; e.target.src="https://placehold.co/80x80/25D366/FFFFFF?text=👤"; }}
         />
       ) : (
         <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "36px", color: "#fff" }}>
           {contact.name.charAt(0).toUpperCase()}
         </div>
       )}
-      <h3 style={{ margin: "0", color: "#FFF", textAlign: "center" }}>{contact.name}</h3>
+      <h3 style={{ margin: "0", color: textColor, textAlign: "center" }}>{contact.name}</h3> {/* Use themed textColor */}
       {contact.email !== "No Email" && (
-        <p style={{ margin: "0", fontSize: "14px", color: "#CCC", textAlign: "center" }}>
+        <p style={{ margin: "0", fontSize: "14px", color: mutedTextColor, textAlign: "center" }}> {/* Use themed mutedTextColor */}
           Email: {contact.email}
         </p>
       )}
       {contact.phone !== "No Phone" && (
-        <p style={{ margin: "0", fontSize: "14px", color: "#CCC", textAlign: "center" }}>
+        <p style={{ margin: "0", fontSize: "14px", color: mutedTextColor, textAlign: "center" }}> {/* Use themed mutedTextColor */}
           Phone: {contact.phone}
         </p>
       )}
@@ -467,7 +508,7 @@ function ContactCard({ contact, accent, isPinned, onTogglePin, onClick }) {
 
 
 // --- ContactDetailsModal Component ---
-function ContactDetailsModal({ contact, onClose, accent, generateVCard }) {
+function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVCard, cardBgColor, textColor, mutedTextColor, theme }) {
   if (!contact) return null;
 
   const handleExportVCardSingle = () => {
@@ -500,9 +541,9 @@ function ContactDetailsModal({ contact, onClose, accent, generateVCard }) {
       zIndex: 1000,
       padding: "20px",
       boxSizing: "border-box",
-    }} onClick={onClose}> {/* Close modal when clicking outside */}
+    }} onClick={onClose}>
       <div style={{
-        background: "#2A2E31",
+        background: cardBgColor, // Use themed background
         padding: "30px",
         borderRadius: "12px",
         boxShadow: "0 8px 16px rgba(0,0,0,0.4)",
@@ -511,11 +552,11 @@ function ContactDetailsModal({ contact, onClose, accent, generateVCard }) {
         gap: "15px",
         width: "90%",
         maxWidth: "500px",
-        color: "#FFF",
+        color: textColor, // Use themed text color
         position: "relative",
-        overflowY: "auto", // Enable scrolling for long content
-        maxHeight: "90vh", // Limit height
-      }} onClick={(e) => e.stopPropagation()}> {/* Prevent modal from closing when clicking inside */}
+        overflowY: "auto",
+        maxHeight: "90vh",
+      }} onClick={(e) => e.stopPropagation()}>
         <button
           onClick={onClose}
           style={{
@@ -525,20 +566,20 @@ function ContactDetailsModal({ contact, onClose, accent, generateVCard }) {
             background: "none",
             border: "none",
             fontSize: "24px",
-            color: "#FFF",
+            color: textColor, // Use themed text color
             cursor: "pointer",
           }}
         >
           &times;
         </button>
 
-        <h2 style={{ color: accent, marginBottom: "10px" }}>{contact.name}</h2>
+        <h2 style={{ color: accentColor, marginBottom: "10px" }}>{contact.name}</h2> {/* Use accentColor */}
         {contact.photo ? (
           <img
             src={contact.photo}
             alt={contact.name}
             style={{ width: "120px", height: "120px", borderRadius: "50%", objectFit: "cover", border: `3px solid ${accent}`, alignSelf: "center" }}
-            onError={(e) => { e.target.onerror = null; e.target.src="https://placehold.co/120x120/25D366/FFFFFF?text=👤"; }} // Fallback image
+            onError={(e) => { e.target.onerror = null; e.target.src="https://placehold.co/120x120/25D366/FFFFFF?text=👤"; }}
           />
         ) : (
           <div style={{ width: "120px", height: "120px", borderRadius: "50%", background: accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px", color: "#fff", alignSelf: "center" }}>
@@ -549,7 +590,7 @@ function ContactDetailsModal({ contact, onClose, accent, generateVCard }) {
         {/* Conditional rendering for Phone Actions */}
         {contact.phone && contact.phone !== "No Phone" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "10px" }}>
-            <p style={{ margin: "0" }}><strong>Phone:</strong> {contact.phone}</p>
+            <p style={{ margin: "0", color: textColor }}><strong>Phone:</strong> {contact.phone}</p> {/* Use themed textColor */}
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <a
                 href={`tel:${contact.phone}`}
@@ -569,7 +610,7 @@ function ContactDetailsModal({ contact, onClose, accent, generateVCard }) {
                 Call Phone 📞
               </a>
               <a
-                href={`whatsapp://send?phone=${contact.phone.replace(/\D/g, '')}`} // Remove non-digits for WhatsApp
+                href={`whatsapp://send?phone=${contact.phone.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -588,7 +629,7 @@ function ContactDetailsModal({ contact, onClose, accent, generateVCard }) {
                 WhatsApp 💬
               </a>
               <a
-                href={`tg://resolve?phone=${contact.phone.replace(/\D/g, '')}`} // Remove non-digits for Telegram
+                href={`tg://resolve?phone=${contact.phone.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -607,7 +648,7 @@ function ContactDetailsModal({ contact, onClose, accent, generateVCard }) {
                 Telegram ✈️
               </a>
               <a
-                href={`skype:${contact.phone}?call`} // Skype call link
+                href={`skype:${contact.phone}?call`}
                 style={{
                   padding: "8px 15px",
                   background: "#00AFF0",
@@ -630,7 +671,7 @@ function ContactDetailsModal({ contact, onClose, accent, generateVCard }) {
         {/* Conditional rendering for Email Action */}
         {contact.email && contact.email !== "No Email" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "10px" }}>
-            <p style={{ margin: "0" }}><strong>Email:</strong> {contact.email}</p>
+            <p style={{ margin: "0", color: textColor }}><strong>Email:</strong> {contact.email}</p> {/* Use themed textColor */}
             <a
               href={`mailto:${contact.email}`}
               style={{
@@ -651,9 +692,9 @@ function ContactDetailsModal({ contact, onClose, accent, generateVCard }) {
           </div>
         )}
 
-        <p><strong>Last Updated:</strong> {contact.lastUpdated !== "N/A" ? new Date(contact.lastUpdated).toLocaleString() : "N/A"}</p>
+        <p style={{ color: mutedTextColor }}><strong>Last Updated:</strong> {contact.lastUpdated !== "N/A" ? new Date(contact.lastUpdated).toLocaleString() : "N/A"}</p> {/* Use themed mutedTextColor */}
 
-        <div style={{ marginTop: "20px", display: "flex", justifyContent: "center", gap: "10px" }}>
+        <div style={{ marginTop: "20px", display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
           <button
             onClick={handleExportVCardSingle}
             style={{
@@ -676,3 +717,4 @@ function ContactDetailsModal({ contact, onClose, accent, generateVCard }) {
     </div>
   );
 }
+
