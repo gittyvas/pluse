@@ -1,6 +1,11 @@
-// google-oauth-app/frontend/src/context/AuthContext.jsx
-
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef
+} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const AuthContext = createContext(null);
@@ -16,82 +21,74 @@ export const AuthProvider = ({ children }) => {
   const location = useLocation();
   const initialUrlParamsProcessed = useRef(false);
 
-  // Effect to apply theme class and persist to localStorage
+  // 🌓 Theme Handling
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
   }, [theme]);
 
-  // Function to toggle theme
   const toggleTheme = () => setTheme(prev => (prev === "dark" ? "light" : "dark"));
 
-  // Updated logout function to communicate with backend to clear httpOnly cookie
+  // 🔓 Logout
   const logout = useCallback(async () => {
     console.log("AuthContext: Performing logout.");
     try {
-      // Send a request to backend to clear the httpOnly cookie
       await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include', // Ensure cookie is sent so backend can clear it
+        method: "POST",
+        credentials: "include"
       });
-      console.log('AuthContext: Backend logout endpoint hit successfully.');
+      console.log("AuthContext: Backend logout endpoint hit successfully.");
     } catch (error) {
-      console.error('AuthContext: Error calling backend logout:', error);
-      // Continue with client-side logout even if backend call fails
+      console.error("AuthContext: Error calling backend logout:", error);
     }
 
     setIsAuthenticated(false);
     setUser(null);
     setDashboardSummaryData(null);
-    // Remove any remaining localStorage items (dashboard data, theme)
     localStorage.removeItem("dashboardSummaryData");
     localStorage.removeItem("theme");
-    initialUrlParamsProcessed.current = false; // Reset for next login
-    navigate("/login", { replace: true }); // Redirect to /login after explicit logout
+    initialUrlParamsProcessed.current = false;
+    navigate("/login", { replace: true });
   }, [navigate]);
 
-  // Function to fetch user data from backend (after successful login via httpOnly cookie)
+  // 🧠 Fetch user from backend using HTTP-only cookie
   const fetchUserData = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('AuthContext: Attempting to fetch user data from backend via cookie...');
+      console.log("AuthContext: Attempting to fetch user data from backend via cookie...");
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
-        method: 'GET',
-        credentials: 'include',
+        method: "GET",
+        credentials: "include"
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const userData = await response.json(); // ✅ Full user object returned from backend
         setIsAuthenticated(true);
-        setUser(data.user);
-        setDashboardSummaryData(data.dashboardSummary);
-        console.log('AuthContext: User data fetched successfully from backend. User:', data.user?.email);
+        setUser(userData); // ✅ Corrected here
+        console.log("AuthContext: User data fetched. User:", userData.email);
       } else if (response.status === 401 || response.status === 403) {
-        console.warn('AuthContext: Backend reported unauthorized/forbidden. Logging out.');
-        logout(); // Call logout directly.
+        console.warn("AuthContext: Unauthorized. Logging out.");
+        logout();
       } else {
-        console.error('AuthContext: Failed to fetch user data from backend, status:', response.status);
+        console.error("AuthContext: Unknown error fetching user data:", response.status);
         setIsAuthenticated(false);
         setUser(null);
-        setDashboardSummaryData(null);
       }
     } catch (error) {
-      console.error('AuthContext: Network error fetching user data:', error);
+      console.error("AuthContext: Network error fetching user data:", error);
       setIsAuthenticated(false);
       setUser(null);
-      setDashboardSummaryData(null);
     } finally {
       setLoading(false);
     }
-  }, [logout]); 
+  }, [logout]);
 
+  // 🌐 React to route changes and load state
   useEffect(() => {
     console.log("AuthContext: useEffect triggered. Location:", location.pathname, "Search:", location.search);
     console.log("AuthContext: initialUrlParamsProcessed.current =", initialUrlParamsProcessed.current);
 
-    // This block handles initial URL processing (e.g., error messages from backend)
-    // and cleans up the URL.
     if (location.search && !initialUrlParamsProcessed.current) {
       const params = new URLSearchParams(location.search);
       const urlError = params.get("error");
@@ -110,26 +107,22 @@ export const AuthProvider = ({ children }) => {
         initialUrlParamsProcessed.current = true;
         return;
       }
+
       initialUrlParamsProcessed.current = true;
     }
 
-    // --- IMPORTANT CHANGE HERE ---
-    // Now includes '/home' as a public route
-    const isPublicRoute = location.pathname === '/' || location.pathname === '/login' || location.pathname === '/home';
+    const isPublicRoute = location.pathname === "/" || location.pathname === "/login" || location.pathname === "/home";
 
     if (!isAuthenticated && !isPublicRoute) {
-      console.log("AuthContext: User is not authenticated and on a protected route. Attempting to fetch user data.");
+      console.log("AuthContext: Not authenticated. Attempting to fetch user.");
       fetchUserData();
     } else if (isPublicRoute && !isAuthenticated) {
-        // If on a public route and not authenticated, just set loading to false
-        // No automatic fetch, no redirect.
-        setLoading(false);
-        console.log("AuthContext: On public route and not authenticated. Skipping automatic fetch.");
+      setLoading(false);
+      console.log("AuthContext: On public route and not authenticated. Skipping automatic fetch.");
     } else {
       setLoading(false);
-      console.log("AuthContext: User already authenticated or on public route. Skipping automatic fetch on this cycle.");
+      console.log("AuthContext: Already authenticated or on public route. Skipping.");
     }
-
   }, [location.search, location.pathname, navigate, logout, isAuthenticated, fetchUserData]);
 
   useEffect(() => {
@@ -150,14 +143,10 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateDashboardSummary,
     theme,
-    toggleTheme,
+    toggleTheme
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
