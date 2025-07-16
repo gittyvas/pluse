@@ -4,8 +4,91 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Terms of Service | Pluse CRM</title>
+  <style>
+    /* Define CSS Variables for consistent theming */
+    :root {
+      --primary-green: #28A745; /* A vibrant green for headings */
+      --text-color: #333;      /* Dark grey for main text */
+      --muted-text-color: #666; /* Lighter grey for secondary text */
+      --background-color: #f8f8f8; /* Very light grey background */
+      --link-color: #28A745; /* Green for links */
+      --link-hover-color: #1e7e34; /* Darker green on link hover */
+      --font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    }
+
+    /* Body styles */
+    body {
+      font-family: var(--font-family);
+      line-height: 1.6;
+      padding: 2rem;
+      max-width: 800px;
+      /* Removed margin: auto; to un-center the content */
+      margin-left: auto; /* This will make it left-aligned within the viewport */
+      margin-right: auto; /* Keep auto on right to allow it to shrink if viewport is smaller than max-width */
+      background-color: var(--background-color);
+      color: var(--text-color);
+      box-sizing: border-box; /* Include padding in element's total width and height */
+      text-align: left; /* Ensure all text within body is left-aligned by default */
+    }
+
+    /* Headings */
+    h1 {
+      font-size: 2.5rem; /* Larger for main title */
+      color: var(--primary-green);
+      margin-bottom: 1rem;
+      text-align: left; /* Explicitly left-align headings */
+    }
+
+    h2 {
+      font-size: 1.8rem; /* Slightly smaller for sections */
+      color: var(--primary-green);
+      margin-top: 2rem;
+      margin-bottom: 0.8rem;
+      text-align: left; /* Explicitly left-align headings */
+    }
+
+    /* Paragraphs */
+    p {
+      margin-bottom: 1rem;
+    }
+
+    /* Last Updated text */
+    p:first-of-type { /* Targets the first paragraph which is "Last Updated" */
+      color: var(--muted-text-color);
+      font-size: 0.95rem;
+      margin-top: -0.5rem; /* Adjust spacing */
+      margin-bottom: 1.5rem;
+    }
+
+    /* Links */
+    a {
+      color: var(--link-color);
+      text-decoration: none; /* No underline by default */
+      transition: color 0.2s ease, text-decoration 0.2s ease;
+    }
+
+    a:hover {
+      color: var(--link-hover-color);
+      text-decoration: underline; /* Underline on hover */
+    }
+
+    /* Strong/bold text */
+    strong {
+      font-weight: bold;
+    }
+
+    /* Ensure lists match default browser styling, which is clean */
+    ul, ol {
+      margin-left: 20px;
+      margin-bottom: 1rem;
+    }
+
+    li {
+      margin-bottom: 0.5rem;
+    }
+  </style>
 </head>
-<body style="font-family: sans-serif; line-height: 1.6; padding: 2rem; max-width: 800px; margin: auto;">
+<body>
   <h1>Terms of Service</h1>
   <p>Last Updated: July 10, 2025</p>
 

@@ -150,7 +150,7 @@ export default function ProfilePage() {
       });
       const data = res.data;
 
-      setProfile(data.user); // ✅ This ensures you're setting the actual user profile object
+      setProfile(data); // Assuming data is directly the profile object now
       setEmailNotifications(data.emailNotifications ?? true);
       setPushNotifications(data.pushNotifications ?? false);
 
@@ -178,7 +178,7 @@ export default function ProfilePage() {
     setNotificationMessage(null); // Clear any previous notification messages
 
     try {
-      const res = await axios.post(`${API_URL}/api/profile/disconnect`, {}, {
+      const res = await axios.post(`${API_URL}/api/user/disconnect`, {}, { // Corrected endpoint to /api/user/disconnect
         withCredentials: true,
       });
       if (res.status === 200) {
@@ -199,7 +199,7 @@ export default function ProfilePage() {
     setNotificationMessage(null); // Clear any previous notification messages
 
     try {
-      const res = await axios.delete(`${API_URL}/api/profile/account`, {
+      const res = await axios.delete(`${API_URL}/api/user/account`, { // Corrected endpoint to /api/user/account
         withCredentials: true,
       });
       if (res.status === 200) {
@@ -218,7 +218,7 @@ export default function ProfilePage() {
   const handleNotificationUpdate = async () => {
     setNotificationMessage(null); // Clear previous messages
     try {
-      const res = await axios.post(`${API_URL}/api/profile/notifications`, {
+      const res = await axios.post(`${API_URL}/api/user/notifications`, { // Corrected endpoint to /api/user/notifications
         emailNotifications,
         pushNotifications,
       }, {
@@ -666,10 +666,11 @@ export default function ProfilePage() {
         <p style={{ margin: 0, fontSize: "0.9rem" }}>
           &copy; {new Date().getFullYear()} Pulse CRM. All rights reserved.
         </p>
+        {/* Removed: About Us, Support, Contact links as requested */}
         <div style={{ display: "flex", gap: "20px" }}>
-          <FooterLink label="About Us" path="/about" />
-          <FooterLink label="Support" path="/support" />
-          <FooterLink label="Contact" path="/contact" />
+          {/* <FooterLink label="About Us" path="/about" /> */}
+          {/* <FooterLink label="Support" path="/support" /> */}
+          {/* <FooterLink label="Contact" path="/contact" /> */}
         </div>
       </footer>
 
