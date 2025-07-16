@@ -42,7 +42,7 @@ const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText, cancelTe
       alignItems: "center",
       justifyContent: "center",
       zIndex: 1000,
-    }}>
+    }} onClick={onCancel}> {/* Allow clicking outside to close */}
       <div style={{
         background: cardBgColor,
         padding: "30px",
@@ -51,7 +51,7 @@ const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText, cancelTe
         maxWidth: "450px",
         textAlign: "center",
         border: `1px solid ${cardBorderColor}`,
-      }}>
+      }} onClick={(e) => e.stopPropagation()}> {/* Prevent clicks inside from closing */}
         <p style={{ fontSize: "1.2rem", color: textColor, marginBottom: "20px" }}>
           {message}
         </p>
@@ -67,6 +67,7 @@ const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText, cancelTe
               border: "none",
               borderRadius: "8px",
               cursor: "pointer",
+              transition: "background 0.3s ease",
               "&:hover": { background: accentColor === "#DC3545" ? "#C82333" : "#43A047" }, // Darken based on color
             }}
           >
@@ -83,6 +84,7 @@ const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText, cancelTe
               border: "none",
               borderRadius: "8px",
               cursor: "pointer",
+              transition: "background 0.3s ease",
               "&:hover": { background: "#808080" },
             }}
           >
@@ -150,9 +152,10 @@ export default function ProfilePage() {
       });
       const data = res.data;
 
-      setProfile(data); // Assuming data is directly the profile object now
-      setEmailNotifications(data.emailNotifications ?? true);
-      setPushNotifications(data.pushNotifications ?? false);
+      // FIX: Revert to data.user assuming backend returns { user: { ... } }
+      setProfile(data.user);
+      setEmailNotifications(data.user.emailNotifications ?? true); // Access from data.user
+      setPushNotifications(data.user.pushNotifications ?? false); // Access from data.user
 
     } catch (err) {
       console.error("ProfilePage: Failed to fetch profile:", err);
@@ -210,7 +213,7 @@ export default function ProfilePage() {
       }
     } catch (err) {
       console.error("Network error while deleting account:", err);
-      setNotificationMessage({ type: 'error', text: err.response?.data?.error || "Network error while deleting account." });
+      setNotificationMessage({ type: 'error', text: err.response?.data?.error || "Failed to delete account." });
     }
   };
 
@@ -273,7 +276,7 @@ export default function ProfilePage() {
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <img
             src="/logo.png"
-            alt="Pluse CRM Logo" // Removed problematic comment
+            alt="Pluse CRM Logo"
             style={{ width: "36px", height: "36px", borderRadius: "50%" }}
           />
           <span style={{ fontWeight: "700", fontSize: "24px", color: textColor, letterSpacing: "-0.8px" }}>
