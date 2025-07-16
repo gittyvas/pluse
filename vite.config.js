@@ -10,4 +10,18 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_URL || 'https://backend.gitthit.com.ng',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/auth': {
+        target: process.env.VITE_API_URL || 'https://backend.gitthit.com.ng',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  }
 });

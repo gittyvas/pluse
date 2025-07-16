@@ -76,7 +76,7 @@ function Reminders() {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch('http://localhost:3000/api/reminders/list', {
+        const response = await fetch('https://backend.gitthit.com.ng/api/reminders/list', {
           credentials: 'include'
         });
         if (response.ok) {

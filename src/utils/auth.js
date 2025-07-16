@@ -4,7 +4,7 @@
 // Your backend MUST have an endpoint configured to handle this.
 // For local development, this assumes your backend is running on port 3000
 // and has a route like /oauth.
-const BACKEND_REDIRECT_URI = 'http://localhost:3000/oauth';
+const BACKEND_REDIRECT_URI = 'https://backend.gitthit.com.ng/oauth';
 
 // In a Vite app, environment variables prefixed with VITE_ are exposed to the browser.
 // Make sure to set VITE_GOOGLE_CLIENT_ID in your .env.local file for local development

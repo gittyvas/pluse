@@ -18,7 +18,7 @@ export default function RemindersPage() {
   const [newReminderDueDate, setNewReminderDueDate] = useState("");
   const [editingReminder, setEditingReminder] = useState(null); // Stores reminder being edited
 
-  const BACKEND_API_BASE_URL = "http://localhost:3000";
+  const BACKEND_API_BASE_URL = "https://backend.gitthit.com.ng";
 
   // --- Fetch Reminders ---
   const fetchReminders = async () => {

@@ -18,13 +18,13 @@ function Search() {
     // which would query your contacts, notes, etc.
     try {
       // Example: Fetch all contacts and filter them client-side
-      const contactsResponse = await fetch('http://localhost:3000/api/contacts/list', { credentials: 'include' });
+      const contactsResponse = await fetch('https://backend.gitthit.com.ng/api/contacts/list', { credentials: 'include' });
       if (!contactsResponse.ok) throw new Error('Failed to fetch contacts for search.');
       const contactsData = await contactsResponse.json();
       const allContacts = contactsData.contacts || [];
 
       // Example: Fetch all notes and filter them client-side
-      const notesResponse = await fetch('http://localhost:3000/api/notes/list', { credentials: 'include' });
+      const notesResponse = await fetch('https://backend.gitthit.com.ng/api/notes/list', { credentials: 'include' });
       if (!notesResponse.ok) throw new Error('Failed to fetch notes for search.');
       const notesData = await notesResponse.json();
       const allNotes = notesData.notes || [];
