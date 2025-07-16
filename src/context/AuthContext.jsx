@@ -1,3 +1,5 @@
+// frontend/src/context/AuthContext.jsx
+
 import React, {
   createContext,
   useContext,
@@ -6,139 +8,154 @@ import React, {
   useCallback,
   useRef
 } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } = require("react-router-dom");
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [dashboardSummaryData, setDashboardSummaryData] = useState(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "light");
+  const [user, setUser] = useState(null); // Stores user data (name, email, etc.)
+  const [loading, setLoading] = useState(true); // Initial loading state for authentication check
+  const [dashboardSummaryData, setDashboardSummaryData] = useState(null); // For caching dashboard data
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark"); // Initialize theme from localStorage
 
   const navigate = useNavigate();
   const location = useLocation();
-  const initialUrlParamsProcessed = useRef(false);
+  const initialUrlParamsProcessed = useRef(false); // To prevent re-processing URL params on re-renders
 
-  // 🌓 Theme
+  const API_URL = import.meta.env.VITE_API_URL;
+
+  // 🌓 Theme Management
   useEffect(() => {
+    // Apply 'dark' class to the root HTML element
     document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("theme", theme);
+    localStorage.setItem("theme", theme); // Persist theme preference
   }, [theme]);
 
-  const toggleTheme = () => setTheme(prev => (prev === "dark" ? "light" : "dark"));
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => (prev === "dark" ? "light" : "dark"));
+  }, []);
 
-  // 🔓 Logout
+  // Function to update dashboard summary data
+  const updateDashboardSummary = useCallback((data) => {
+    setDashboardSummaryData(prevData => ({ ...prevData, ...data }));
+    // Optionally persist dashboard summary to localStorage
+    // localStorage.setItem("dashboardSummaryData", JSON.stringify(data));
+  }, []);
+
+  // 🔓 Logout Function
   const logout = useCallback(async () => {
     console.log("AuthContext: Performing logout.");
     try {
-      await fetch(`${import.meta.env.VITE_API_URL}/auth/logout`, {
+      // Hit backend logout endpoint to clear HTTP-only cookie
+      await fetch(`${API_URL}/auth/logout`, {
         method: "POST",
-        credentials: "include"
+        credentials: "include" // Crucial for sending HTTP-only cookies
       });
-      console.log("AuthContext: Backend logout hit.");
+      console.log("AuthContext: Backend logout endpoint hit successfully.");
     } catch (error) {
-      console.error("AuthContext: Logout failed:", error);
+      console.error("AuthContext: Error during backend logout:", error);
+    } finally {
+      // Clear frontend state and local storage
+      setIsAuthenticated(false);
+      setUser(null);
+      setDashboardSummaryData(null);
+      localStorage.removeItem("dashboardSummaryData"); // Clear cached dashboard data
+      localStorage.removeItem("theme"); // Clear theme on logout, or keep it if preferred
+      setTheme('dark'); // Reset to default theme on logout
+      initialUrlParamsProcessed.current = false; // Reset for next login
+      navigate("/login", { replace: true }); // Redirect to login page
     }
+  }, [API_URL, navigate]);
 
-    setIsAuthenticated(false);
-    setUser(null);
-    setDashboardSummaryData(null);
-    localStorage.removeItem("dashboardSummaryData");
-    localStorage.removeItem("theme");
-    initialUrlParamsProcessed.current = false;
-    navigate("/login", { replace: true });
-  }, [navigate]);
-
-  // 🧠 Fetch user from backend
+  // 🧠 Fetch user data from backend via cookie (main authentication check)
   const fetchUserData = useCallback(async () => {
     try {
-      setLoading(true);
-      console.log("AuthContext: Fetching user via cookie...");
-
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
+      setLoading(true); // Set loading true before fetch
+      console.log("AuthContext: Attempting to fetch user data from backend via cookie...");
+      const response = await fetch(`${API_URL}/api/user/profile`, {
         method: "GET",
-        credentials: "include"
+        credentials: "include", // Crucial for sending HTTP-only cookies
       });
 
       if (response.ok) {
-        const data = await response.json();
-
-        // 🛑 FIXED: `data.user`, not `data`
+        const data = await response.json(); // Backend now returns profileData directly, not wrapped in { user: ... }
         setIsAuthenticated(true);
-        setUser(data.user);
-        console.log("AuthContext: User fetched:", data.user?.email);
+        setUser(data); // Set user with the profile data (name, email, photoURL etc.)
+        console.log("AuthContext: User authenticated and data fetched:", data?.email);
       } else if (response.status === 401 || response.status === 403) {
-        console.warn("AuthContext: Unauthorized. Logging out.");
-        logout();
+        console.warn("AuthContext: Backend reported unauthorized/forbidden. Logging out.");
+        logout(); // Call logout to clear state and redirect
       } else {
-        console.error("AuthContext: Unknown error:", response.status);
+        console.error("AuthContext: Unknown error fetching user profile:", response.status, await response.text());
         setIsAuthenticated(false);
         setUser(null);
       }
     } catch (error) {
-      console.error("AuthContext: Network error:", error);
+      console.error("AuthContext: Network error during user data fetch:", error);
       setIsAuthenticated(false);
       setUser(null);
     } finally {
-      setLoading(false);
+      setLoading(false); // Set loading false after fetch attempt
     }
-  }, [logout]);
+  }, [API_URL, logout]);
 
-  // 🌐 On route change
+  // 🌐 Main Authentication Effect (runs on route changes and initial load)
   useEffect(() => {
-    console.log("AuthContext: useEffect. Location:", location.pathname);
+    const publicRoutes = ["/", "/login", "/home", "/auth/google/callback"]; // Define public routes
 
-    if (location.search && !initialUrlParamsProcessed.current) {
-      const params = new URLSearchParams(location.search);
-      const error = params.get("error");
+    const currentPath = location.pathname;
+    const isPublicRoute = publicRoutes.includes(currentPath);
 
-      if (error) {
-        console.error("AuthContext: OAuth error:", error);
-        logout();
-        setLoading(false);
-      }
+    console.log(`AuthContext: useEffect triggered. Location: ${currentPath} Search: ${location.search}`);
 
-      const cleanPath = location.pathname.replace(/\/+$/, "");
-      if (location.search) {
-        navigate(cleanPath, { replace: true });
-        initialUrlParamsProcessed.current = true;
+    // 1. Handle Google OAuth callback URL parameters (initial login redirect)
+    if (currentPath === '/auth/google/callback' && location.search && !initialUrlParamsProcessed.current) {
+        const params = new URLSearchParams(location.search);
+        const errorParam = params.get("error"); // Check for error param
+
+        if (errorParam) {
+            console.error("AuthContext: OAuth error received in callback:", errorParam);
+            navigate('/login?error=' + encodeURIComponent(errorParam), { replace: true });
+        } else {
+            // If no error, assume successful callback and let fetchUserData handle authentication
+            console.log("AuthContext: Processing Google OAuth callback. Triggering fetchUserData.");
+            initialUrlParamsProcessed.current = true; // Mark as processed
+            fetchUserData(); // Fetch user data after successful callback
+            navigate('/dashboard', { replace: true }); // Redirect to dashboard immediately after processing
+        }
+        return; // Exit useEffect after handling callback
+    }
+
+    // 2. If already authenticated, no need to fetch again or redirect
+    if (isAuthenticated && user) {
+        console.log("AuthContext: Already authenticated and user data present. No action needed.");
+        setLoading(false); // Ensure loading is false
         return;
-      }
-
-      initialUrlParamsProcessed.current = true;
     }
 
-    const publicRoutes = ["/", "/login", "/home"];
-    const isPublicRoute = publicRoutes.includes(location.pathname);
-
+    // 3. If not authenticated and not on a public route, attempt to fetch user data
     if (!isAuthenticated && !isPublicRoute) {
-      fetchUserData();
+        console.log("AuthContext: Not authenticated and on protected route. Initiating auth check.");
+        fetchUserData();
     } else if (isPublicRoute && !isAuthenticated) {
-      setLoading(false);
-      console.log("AuthContext: Public route. Skipping fetch.");
-    } else {
-      setLoading(false);
+        // 4. On a public route and not authenticated, no action needed, just set loading false
+        console.log("AuthContext: On public route and not authenticated. Setting loading to false.");
+        setLoading(false);
     }
-  }, [location, isAuthenticated, logout, fetchUserData, navigate]);
+    // Any other case (e.g., isAuthenticated is true but user is null, or loading is true)
+    // will be handled by the specific conditions above or the initial loading state.
 
+  }, [location.pathname, location.search, isAuthenticated, user, navigate, fetchUserData, logout]);
+
+
+  // Log current state for debugging (optional, can be removed in production)
   useEffect(() => {
-    console.log("AuthContext State:", {
-      isAuthenticated,
-      user: user?.email,
-      loading,
-      dashboardSummaryData
-    });
+    console.log("AuthContext Current State: isAuthenticated =", isAuthenticated, "user =", user?.email, "loading =", loading, "dashboardSummaryData =", dashboardSummaryData);
   }, [isAuthenticated, user, loading, dashboardSummaryData]);
 
-  const updateDashboardSummary = useCallback((data) => {
-    console.log("AuthContext: Updating dashboard summary.");
-    setDashboardSummaryData(data);
-    localStorage.setItem("dashboardSummaryData", JSON.stringify(data));
-  }, []);
 
-  const value = {
+  const value = React.useMemo(() => ({
     isAuthenticated,
     user,
     loading,
@@ -147,7 +164,7 @@ export const AuthProvider = ({ children }) => {
     updateDashboardSummary,
     theme,
     toggleTheme
-  };
+  }), [isAuthenticated, user, loading, dashboardSummaryData, logout, updateDashboardSummary, theme, toggleTheme]);
 
   return (
     <AuthContext.Provider value={value}>
@@ -163,4 +180,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

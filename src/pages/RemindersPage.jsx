@@ -73,87 +73,61 @@ const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText, cancelTe
 
 export default function RemindersPage() {
   const navigate = useNavigate();
-  // We no longer need `user.token` on the frontend for auth, as it's cookie-based.
-  // `isAuthenticated` and `loading` from useAuth are sufficient for UI state.
-  const { isAuthenticated, loading, logout, theme } = useAuth();
-  const accent = "#25D366";
+  const { isAuthenticated, loading, theme } = useAuth(); // No need for logout if no backend interaction
 
   const [reminders, setReminders] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newReminderTitle, setNewReminderTitle] = useState("");
-  const [newReminderDescription, setNewReminderDescription] = useState(""); // Add description state
+  const [newReminderDescription, setNewReminderDescription] = useState("");
   const [newReminderDueDate, setNewReminderDueDate] = useState("");
-  const [editingReminder, setEditingReminder] = useState(null); // Stores reminder being edited
+  const [editingReminder, setEditingReminder] = useState(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [reminderToDeleteId, setReminderToDeleteId] = useState(null);
 
 
-  // Use environment variable for backend URL
-  const BACKEND_API_BASE_URL = import.meta.env.VITE_API_URL;
-
-  // Theme colors (consistent with other pages)
+  // Define colors based on theme
   const bgColor = theme === 'dark' ? "#1A222A" : "#F8FBF8";
   const textColor = theme === 'dark' ? "#E0E6EB" : "#303030";
+  const accentColor = "#4CAF50";
   const cardBgColor = theme === 'dark' ? "linear-gradient(145deg, #2A343D, #1F2830)" : "linear-gradient(145deg, #FFFFFF, #F0F5F0)";
   const cardBorderColor = theme === 'dark' ? "#3A454F" : "#E0E5E0";
   const mutedTextColor = theme === 'dark' ? "#A0A8B0" : "#606060";
 
 
-  // --- Fetch Reminders ---
-  const fetchReminders = useCallback(async () => {
-    // Only proceed if authenticated and not currently loading auth state
-    if (!isAuthenticated || loading) {
-      console.log("RemindersPage: Not authenticated or auth still loading. Skipping fetch.");
-      setDataLoading(false);
-      return;
-    }
+  // Function to update localStorage after reminders changes
+  const updateLocalStorageReminders = useCallback((updatedReminders) => {
+    localStorage.setItem("localReminders", JSON.stringify(updatedReminders));
+    // Dispatch a storage event to notify other tabs/components (like Dashboard)
+    window.dispatchEvent(new Event('storage'));
+  }, []);
 
+
+  // --- Fetch Reminders (from localStorage) ---
+  const fetchReminders = useCallback(() => {
     setError(null);
     setDataLoading(true);
     try {
-      console.log("RemindersPage: Attempting to fetch reminders from backend.");
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/reminders`, {
-        method: "GET",
-        credentials: "include", // CRITICAL: Ensures HTTP-only cookie is sent
-        headers: {
-          "Content-Type": "application/json",
-          // "Authorization": `Bearer ${user.token}`, // REMOVED: No longer needed for cookie-based auth
-        },
-      });
-
-      if (response.status === 401 || response.status === 403) {
-        console.error("Reminders API: Session expired or unauthorized. Logging out.");
-        logout();
-        return;
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to fetch reminders: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      const result = await response.json();
-      // Backend's remindersController returns an array directly, not { reminders: [...] }
-      setReminders(result || []);
-      console.log("Fetched Reminders:", result);
+      const storedReminders = JSON.parse(localStorage.getItem("localReminders")) || [];
+      setReminders(storedReminders.sort((a, b) => new Date(a.due_date) - new Date(b.due_date)));
+      console.log("RemindersPage: Fetched Reminders from localStorage:", storedReminders);
     } catch (err) {
-      console.error("Error fetching reminders:", err);
-      setError("Failed to load reminders. Error: " + err.message);
+      console.error("Error fetching reminders from localStorage:", err);
+      setError("Failed to load reminders from local storage. Error: " + err.message);
     } finally {
       setDataLoading(false);
     }
-  }, [isAuthenticated, loading, logout, BACKEND_API_BASE_URL]); // Added BACKEND_API_BASE_URL to dependencies
+  }, []);
 
   useEffect(() => {
-    if (!loading && isAuthenticated) { // Only attempt to fetch once auth loading is complete AND authenticated
+    // Reminders page doesn't strictly need isAuthenticated, but for consistency with app flow
+    if (!loading) {
       fetchReminders();
     }
-  }, [isAuthenticated, loading, fetchReminders]);
+  }, [loading, fetchReminders]);
 
-
-  // --- Add Reminder ---
+  // --- Add Reminder (to localStorage) ---
   const handleAddReminder = async (e) => {
     e.preventDefault();
     if (!newReminderTitle || !newReminderDueDate) {
@@ -163,131 +137,70 @@ export default function RemindersPage() {
 
     setError(null);
     try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/reminders`, {
-        method: "POST",
-        credentials: "include", // CRITICAL: Ensures HTTP-only cookie is sent
-        headers: {
-          "Content-Type": "application/json",
-          // "Authorization": `Bearer ${user.token}`, // REMOVED
-        },
-        body: JSON.stringify({
-          title: newReminderTitle,
-          // Backend's remindersController expects 'due_date' or 'dueDate'
-          // Let's stick to 'due_date' for consistency with MySQL snake_case if possible,
-          // or ensure backend maps it. For now, using 'due_date'
-          due_date: newReminderDueDate, // Changed to snake_case for backend consistency
-          description: newReminderDescription, // Added description
-        }),
-      });
+      const newReminder = {
+        id: Date.now(), // Simple unique ID for local storage
+        title: newReminderTitle,
+        description: newReminderDescription,
+        due_date: newReminderDueDate,
+        completed: false, // Default to not completed
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
 
-      if (response.status === 401 || response.status === 403) {
-        console.error("Reminders API: Session expired or invalid. Logging out.");
-        logout();
-        return;
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to add reminder: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      const result = await response.json();
-      // Assuming backend returns the created reminder object directly
-      setReminders((prev) => [...prev, result].sort((a, b) => new Date(a.due_date) - new Date(b.due_date))); // Sort by due_date
+      const updatedReminders = [...reminders, newReminder].sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+      setReminders(updatedReminders);
+      updateLocalStorageReminders(updatedReminders); // Update localStorage
       setShowAddForm(false);
       setNewReminderTitle("");
       setNewReminderDescription("");
       setNewReminderDueDate("");
-      console.log("Reminder added:", result);
+      console.log("Reminder added to localStorage:", newReminder);
     } catch (err) {
-      console.error("Error adding reminder:", err);
+      console.error("Error adding reminder to localStorage:", err);
       setError("Failed to add reminder. Error: " + err.message);
     }
   };
 
-  // --- Edit Reminder ---
+  // --- Edit Reminder (in localStorage) ---
   const handleEditReminder = async (e) => {
     e.preventDefault();
-    if (!editingReminder || !editingReminder.title || !editingReminder.due_date) { // Changed to due_date
+    if (!editingReminder || !editingReminder.title || !editingReminder.due_date) {
       setError("Title and Due Date are required for editing.");
       return;
     }
 
     setError(null);
     try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/reminders/${editingReminder.id}`, {
-        method: "PUT",
-        credentials: "include", // CRITICAL: Ensures HTTP-only cookie is sent
-        headers: {
-          "Content-Type": "application/json",
-          // "Authorization": `Bearer ${user.token}`, // REMOVED
-        },
-        body: JSON.stringify({
-          title: editingReminder.title,
-          due_date: editingReminder.due_date, // Changed to due_date
-          // The backend controller for reminders only updates title and due_date.
-          // If you want to update description and completed, the backend controller needs modification.
-          // For now, we only send what the backend expects.
-          // description: editingReminder.description, // Not supported by current backend controller
-          completed: editingReminder.completed, // Not supported by current backend controller
-        }),
-      });
+      const updatedReminders = reminders.map((r) =>
+        r.id === editingReminder.id
+          ? { ...editingReminder, updated_at: new Date().toISOString() } // Update timestamp
+          : r
+      ).sort((a, b) => new Date(a.due_date) - new Date(b.due_date)); // Re-sort
 
-      if (response.status === 401 || response.status === 403) {
-        console.error("Reminders API: Session expired or invalid. Logging out.");
-        logout();
-        return;
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to update reminder: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      // Assuming backend returns the updated reminder object directly
-      const result = await response.json();
-      setReminders((prev) =>
-        prev.map((r) => (r.id === result.id ? result : r)).sort((a, b) => new Date(a.due_date) - new Date(b.due_date)) // Sort by due_date
-      );
-      setEditingReminder(null); // Close edit form
-      console.log("Reminder updated:", result);
+      setReminders(updatedReminders);
+      updateLocalStorageReminders(updatedReminders); // Update localStorage
+      setEditingReminder(null);
+      console.log("Reminder updated in localStorage:", editingReminder);
     } catch (err) {
-      console.error("Error updating reminder:", err);
+      console.error("Error updating reminder in localStorage:", err);
       setError("Failed to update reminder. Error: " + err.message);
     }
   };
 
-  // --- Delete Reminder ---
+  // --- Delete Reminder (from localStorage) ---
   const handleDeleteReminderConfirmed = async () => {
     const id = reminderToDeleteId;
-    setShowDeleteConfirmModal(false); // Close modal
-    setReminderToDeleteId(null); // Clear ID
+    setShowDeleteConfirmModal(false);
+    setReminderToDeleteId(null);
 
     setError(null);
     try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/reminders/${id}`, {
-        method: "DELETE",
-        credentials: "include", // CRITICAL: Ensures HTTP-only cookie is sent
-        headers: {
-          // "Authorization": `Bearer ${user.token}`, // REMOVED
-        },
-      });
-
-      if (response.status === 401 || response.status === 403) {
-        console.error("Reminders API: Session expired or invalid. Logging out.");
-        logout();
-        return;
-      }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to delete reminder: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-
-      setReminders((prev) => prev.filter((r) => r.id !== id));
-      console.log("Reminder deleted:", id);
+      const updatedReminders = reminders.filter((r) => r.id !== id);
+      setReminders(updatedReminders);
+      updateLocalStorageReminders(updatedReminders); // Update localStorage
+      console.log("Reminder deleted from localStorage:", id);
     } catch (err) {
-      console.error("Error deleting reminder:", err);
+      console.error("Error deleting reminder from localStorage:", err);
       setError("Failed to delete reminder. Error: " + err.message);
     }
   };
@@ -297,64 +210,34 @@ export default function RemindersPage() {
     setShowDeleteConfirmModal(true);
   };
 
-  // --- Toggle Reminder Completion (Backend does not support 'completed' field in PUT for reminders) ---
-  // This function will need backend support to actually persist completion status.
-  // The current backend remindersController.js only updates title and due_date.
-  // For now, this will only update local state.
+  // --- Toggle Reminder Completion (in localStorage) ---
   const handleToggleComplete = async (reminder) => {
     setError(null);
-    // Optimistic UI update
-    setReminders((prev) =>
-      prev.map((r) => (r.id === reminder.id ? { ...r, completed: !r.completed } : r))
-    );
-    console.warn("Toggle completion is currently frontend-only. Backend does not support 'completed' field for reminders.");
-
-    // If you want to persist this, you need to update backend/controllers/remindersController.js
-    // to include 'completed' in its UPDATE query.
-    /*
     try {
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/reminders/${reminder.id}`, {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: reminder.title, // Send existing title
-          due_date: reminder.due_date, // Send existing due_date
-          completed: !reminder.completed // Send the new completion status
-        }),
-      });
-
-      if (response.status === 401 || response.status === 403) {
-        logout();
-        return;
-      }
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to toggle completion: ${response.status} ${response.statusText} - ${errorText}`);
-      }
-      const result = await response.json();
-      setReminders((prev) => prev.map((r) => (r.id === result.id ? result : r)));
-      console.log("Reminder completion toggled:", result);
-    } catch (err) {
-      console.error("Error toggling completion:", err);
-      setError("Failed to toggle reminder completion. Error: " + err.message);
-      // Revert optimistic update if API call fails
-      setReminders((prev) =>
-        prev.map((r) => (r.id === reminder.id ? { ...r, completed: !r.completed } : r))
+      const updatedReminders = reminders.map((r) =>
+        r.id === reminder.id
+          ? { ...r, completed: !r.completed, updated_at: new Date().toISOString() }
+          : r
       );
+      setReminders(updatedReminders);
+      updateLocalStorageReminders(updatedReminders); // Update localStorage
+      console.log("Reminder completion toggled in localStorage:", reminder.id);
+    } catch (err) {
+      console.error("Error toggling completion in localStorage:", err);
+      setError("Failed to toggle reminder completion. Error: " + err.message);
     }
-    */
   };
 
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#181C1F", color: "#fff" }}>
-        <p>Loading authentication...</p>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: bgColor, color: textColor }}>
+        <p>Loading application data...</p>
       </div>
     );
   }
 
+  // Authentication check is still relevant for page access, even if data is local
   if (!isAuthenticated) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "red", color: "white" }}>
@@ -365,22 +248,22 @@ export default function RemindersPage() {
 
   return (
     <div style={{ background: bgColor, color: textColor, minHeight: "100vh", padding: "32px", fontFamily: "Inter, sans-serif" }}>
-      <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "30px", color: accent }}>Your Reminders</h1>
+      <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "30px", color: accentColor }}>Your Reminders</h1>
 
       <button
         onClick={() => navigate("/dashboard")}
         style={{
           marginBottom: "20px",
           padding: "10px 20px",
-          background: "#333",
-          color: "white",
+          background: mutedTextColor,
+          color: textColor,
           border: "none",
           borderRadius: "8px",
           cursor: "pointer",
           transition: "background 0.2s",
         }}
-        onMouseOver={(e) => (e.currentTarget.style.background = "#555")}
-        onMouseOut={(e) => (e.currentTarget.style.background = "#333")}
+        onMouseOver={(e) => (e.currentTarget.style.background = theme === 'dark' ? "#555" : "#CCC")}
+        onMouseOut={(e) => (e.currentTarget.style.background = mutedTextColor)}
       >
         ← Back to Dashboard
       </button>
@@ -397,7 +280,7 @@ export default function RemindersPage() {
           onClick={() => setShowAddForm(!showAddForm)}
           style={{
             padding: "10px 20px",
-            background: accent,
+            background: accentColor,
             color: "white",
             border: "none",
             borderRadius: "8px",
@@ -406,7 +289,7 @@ export default function RemindersPage() {
             boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
           }}
           onMouseOver={(e) => (e.currentTarget.style.background = "#20B2AA")}
-          onMouseOut={(e) => (e.currentTarget.style.background = accent)}
+          onMouseOut={(e) => (e.currentTarget.style.background = accentColor)}
         >
           {showAddForm ? "Hide Form" : "Add New Reminder"}
         </button>
@@ -451,7 +334,7 @@ export default function RemindersPage() {
             type="submit"
             style={{
               padding: "10px 20px",
-              background: accent,
+              background: accentColor,
               color: "white",
               border: "none",
               borderRadius: "8px",
@@ -460,7 +343,7 @@ export default function RemindersPage() {
               boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
             }}
             onMouseOver={(e) => (e.currentTarget.style.background = "#20B2AA")}
-            onMouseOut={(e) => (e.currentTarget.style.background = accent)}
+            onMouseOut={(e) => (e.currentTarget.style.background = accentColor)}
           >
             Save Reminder
           </button>
@@ -530,8 +413,8 @@ export default function RemindersPage() {
             ></textarea>
             <input
               type="datetime-local"
-              value={editingReminder.due_date ? new Date(editingReminder.due_date).toISOString().slice(0, 16) : ""} // Use due_date
-              onChange={(e) => setEditingReminder({ ...editingReminder, due_date: e.target.value })} // Use due_date
+              value={editingReminder.due_date ? new Date(editingReminder.due_date).toISOString().slice(0, 16) : ""}
+              onChange={(e) => setEditingReminder({ ...editingReminder, due_date: e.target.value })}
               style={{ padding: "12px", borderRadius: "6px", border: `1px solid ${cardBorderColor}`, background: bgColor, color: textColor }}
               required
             />
@@ -550,7 +433,7 @@ export default function RemindersPage() {
                 type="submit"
                 style={{
                   padding: "12px 25px",
-                  background: accent,
+                  background: accentColor,
                   color: "white",
                   border: "none",
                   borderRadius: "8px",
@@ -559,13 +442,13 @@ export default function RemindersPage() {
                   boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
                 }}
                 onMouseOver={(e) => (e.currentTarget.style.background = "#20B2AA")}
-                onMouseOut={(e) => (e.currentTarget.style.background = accent)}
+                onMouseOut={(e) => (e.currentTarget.style.background = accentColor)}
               >
                 Save Changes
               </button>
               <button
                 type="button"
-                onClick={() => setEditingReminder(null)} // Close modal
+                onClick={() => setEditingReminder(null)}
                 style={{
                   padding: "12px 25px",
                   background: mutedTextColor,
@@ -599,10 +482,10 @@ export default function RemindersPage() {
               <div
                 key={reminder.id}
                 style={{
-                  border: `1px solid ${reminder.completed ? "#4CAF50" : cardBorderColor}`, // Green border for completed
+                  border: `1px solid ${reminder.completed ? "#4CAF50" : cardBorderColor}`,
                   borderRadius: "8px",
                   padding: "20px",
-                  background: reminder.completed ? "linear-gradient(145deg, #2A3D2A, #1F281F)" : cardBgColor, // Darker green for completed
+                  background: reminder.completed ? "linear-gradient(145deg, #2A3D2A, #1F281F)" : cardBgColor,
                   boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
                   display: "flex",
                   flexDirection: "column",
@@ -699,7 +582,7 @@ export default function RemindersPage() {
           onCancel={() => setShowDeleteConfirmModal(false)}
           confirmText="Yes, Delete"
           cancelText="Cancel"
-          accentColor="#DC3545" // Red for delete
+          accentColor="#DC3545"
           cardBgColor={cardBgColor}
           textColor={textColor}
           mutedTextColor={mutedTextColor}
