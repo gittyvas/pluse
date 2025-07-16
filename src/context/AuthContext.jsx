@@ -8,7 +8,8 @@ import React, {
   useCallback,
   useRef
 } from "react";
-import { useNavigate, useLocation } = require("react-router-dom");
+// FIX: Corrected import syntax
+import { useNavigate, useLocation } from "react-router-dom"; // <-- THIS LINE WAS THE PROBLEM
 
 const AuthContext = createContext(null);
 
