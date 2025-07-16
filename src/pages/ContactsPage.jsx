@@ -647,8 +647,8 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
               </a>
               <a
                 href={`skype:${contact.phone}?call`}
-                target="_blank" {/* Corrected comment syntax */}
-                rel="noopener noreferrer" {/* Corrected comment syntax */}
+                target="_blank"
+                rel="noopener noreferrer"
                 style={{
                   padding: "8px 15px",
                   background: "#00AFF0",
