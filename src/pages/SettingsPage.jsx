@@ -102,8 +102,7 @@ export default function SettingsPage() {
 
     try {
       console.log("SettingsPage: Attempting to delete account via backend.");
-      // FIX: Corrected endpoint URL from /delete to /account
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/user/account`, {
+      const response = await fetch(`${BACKEND_API_BASE_URL}/api/user/account`, { // Corrected endpoint
         method: "DELETE",
         credentials: "include", // Crucial for sending HTTP-only cookies
       });
@@ -111,7 +110,6 @@ export default function SettingsPage() {
       if (response.ok) {
         setSuccessMessage("Account deleted successfully. Redirecting to login...");
         console.log("SettingsPage: Account deleted successfully.");
-        // Clear all local storage related to the user and then logout
         localStorage.clear(); // Clear all local storage
         logout(); // This will also navigate to /login
       } else if (response.status === 401 || response.status === 403) {
@@ -148,7 +146,8 @@ export default function SettingsPage() {
 
   return (
     <div style={{ background: bgColor, color: textColor, minHeight: "100vh", padding: "32px", fontFamily: "Inter, sans-serif" }}>
-      <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "30px", color: accentColor }>Settings</h1>
+      {/* FIX: Added missing closing curly brace for style prop */}
+      <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "30px", color: accentColor }}>Settings</h1>
 
       <button
         onClick={() => navigate("/dashboard")}
