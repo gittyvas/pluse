@@ -102,7 +102,8 @@ export default function SettingsPage() {
 
     try {
       console.log("SettingsPage: Attempting to delete account via backend.");
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/user/delete`, {
+      // FIX: Corrected endpoint URL from /delete to /account
+      const response = await fetch(`${BACKEND_API_BASE_URL}/api/user/account`, {
         method: "DELETE",
         credentials: "include", // Crucial for sending HTTP-only cookies
       });
@@ -147,7 +148,7 @@ export default function SettingsPage() {
 
   return (
     <div style={{ background: bgColor, color: textColor, minHeight: "100vh", padding: "32px", fontFamily: "Inter, sans-serif" }}>
-      <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "30px", color: accentColor }}>Settings</h1>
+      <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "30px", color: accentColor }>Settings</h1>
 
       <button
         onClick={() => navigate("/dashboard")}
