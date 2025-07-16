@@ -6,10 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { useInView } from 'react-intersection-observer';
 
 // Reusable NavLink Component for Header
-const NavLink = ({ label, navigate, path }) => {
-  const textColor = "var(--foreground)";
-  const accentColor = "#4CAF50"; // Soft green accent
-
+const NavLink = ({ label, navigate, path, textColor, accentColor }) => {
   const handleClick = (e) => {
     e.preventDefault();
     if (path.startsWith('/#')) {
@@ -33,10 +30,14 @@ const NavLink = ({ label, navigate, path }) => {
         fontWeight: "500",
         fontSize: "1rem",
         transition: "color 0.2s ease",
-        "&:hover": {
-          color: accentColor,
+        flexShrink: 0, // Prevent nav links from shrinking
+        // Responsive font size for smaller screens
+        "@media (max-width: 768px)": {
+          fontSize: "0.9rem", // Slightly smaller font on smaller screens
         },
       }}
+      onMouseOver={(e) => (e.currentTarget.style.color = accentColor)}
+      onMouseOut={(e) => (e.currentTarget.style.color = textColor)}
     >
       {label}
     </a>
@@ -44,22 +45,18 @@ const NavLink = ({ label, navigate, path }) => {
 };
 
 // Reusable FooterLink Component
-const FooterLink = ({ label, path }) => {
-  const textColor = "var(--muted-foreground)";
-  const accentColor = "#4CAF50"; // Soft green accent
-
+const FooterLink = ({ label, path, accentColor, mutedTextColor }) => {
   return (
     <a
       href={path}
       style={{
         textDecoration: "none",
-        color: textColor,
+        color: mutedTextColor,
         fontSize: "0.9rem",
         transition: "color 0.2s ease",
-        "&:hover": {
-          color: accentColor,
-        },
       }}
+      onMouseOver={(e) => (e.currentTarget.style.color = accentColor)}
+      onMouseOut={(e) => (e.currentTarget.style.color = mutedTextColor)}
     >
       {label}
     </a>
@@ -67,7 +64,7 @@ const FooterLink = ({ label, path }) => {
 };
 
 // Reusable Section with Scroll Animation Component
-const SectionWithAnimation = ({ id, theme, accentColor, sectionBgColor, sectionBorderColor, title, children }) => {
+const SectionWithAnimation = ({ id, theme, accentColor, sectionBgColor, sectionBorderColor, textColor, mutedTextColor, title, children }) => {
   const { ref, inView } = useInView({
     triggerOnce: true,
     threshold: 0.1,
@@ -87,10 +84,10 @@ const SectionWithAnimation = ({ id, theme, accentColor, sectionBgColor, sectionB
         padding: "80px 20px",
         maxWidth: "1200px",
         margin: "60px auto",
-        background: sectionBgColor, // Can be a gradient
-        borderRadius: "20px", // More rounded
+        background: sectionBgColor,
+        borderRadius: "20px",
         border: `1px solid ${sectionBorderColor}`,
-        boxShadow: "0 8px 25px rgba(0,0,0,0.08)", // Softer shadow
+        boxShadow: "0 8px 25px rgba(0,0,0,0.08)",
         ...animationStyle,
       }}
     >
@@ -103,30 +100,23 @@ const SectionWithAnimation = ({ id, theme, accentColor, sectionBgColor, sectionB
 };
 
 // Reusable Feature Card Component
-const FeatureCard = ({ icon, title, description, theme }) => {
-  const cardBgColor = theme === 'dark' ? "var(--background)" : "#F8FBF8"; // Match overall lighter background
-  const textColor = theme === 'dark' ? "var(--foreground)" : "#303030";
-  const mutedTextColor = theme === 'dark' ? "var(--muted-foreground)" : "#606060";
-  const cardBorderColor = theme === 'dark' ? "var(--border)" : "#E0E5E0";
-  const accentColor = "#4CAF50";
-
+const FeatureCard = ({ icon, title, description, theme, accentColor, cardBgColor, textColor, mutedTextColor, cardBorderColor }) => {
   return (
     <div style={{
       padding: "30px",
       background: cardBgColor,
-      borderRadius: "15px", // More rounded cards
-      boxShadow: "0 4px 15px rgba(0,0,0,0.08)", // Softer shadow
+      borderRadius: "15px",
+      boxShadow: "0 4px 15px rgba(0,0,0,0.08)",
       border: `1px solid ${cardBorderColor}`,
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       textAlign: "center",
       transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-      "&:hover": {
-        transform: "translateY(-5px)",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.12)", // Slightly more pronounced on hover
-      },
-    }}>
+    }}
+    onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.12)"; }}
+    onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.08)"; }}
+    >
       <div style={{ fontSize: "3rem", marginBottom: "15px", color: accentColor }}>{icon}</div>
       <h3 style={{ fontSize: "1.6rem", fontWeight: "bold", marginBottom: "10px", color: textColor }}>{title}</h3>
       <p style={{ fontSize: "1rem", lineHeight: "1.6", color: mutedTextColor }}>{description}</p>
@@ -134,31 +124,24 @@ const FeatureCard = ({ icon, title, description, theme }) => {
   );
 };
 
-// Reusable Benefit Card Component (now also accepts an icon prop)
-const BenefitCard = ({ icon, title, description, theme }) => {
-  const cardBgColor = theme === 'dark' ? "var(--card)" : "#F8FBF8"; // Match overall lighter background
-  const textColor = theme === 'dark' ? "var(--foreground)" : "#303030";
-  const mutedTextColor = theme === 'dark' ? "var(--muted-foreground)" : "#606060";
-  const cardBorderColor = theme === 'dark' ? "var(--border)" : "#E0E5E0";
-  const accentColor = "#4CAF50";
-
+// Reusable Benefit Card Component
+const BenefitCard = ({ icon, title, description, theme, accentColor, cardBgColor, textColor, mutedTextColor, cardBorderColor }) => {
   return (
     <div style={{
       padding: "30px",
       background: cardBgColor,
-      borderRadius: "15px", // More rounded cards
-      boxShadow: "0 4px 15px rgba(0,0,0,0.08)", // Softer shadow
+      borderRadius: "15px",
+      boxShadow: "0 4px 15px rgba(0,0,0,0.08)",
       border: `1px solid ${cardBorderColor}`,
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       textAlign: "center",
       transition: "transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out",
-      "&:hover": {
-        transform: "translateY(-5px)",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.12)",
-      },
-    }}>
+    }}
+    onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "0 10px 30px rgba(0,0,0,0.12)"; }}
+    onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.08)"; }}
+    >
       <div style={{ fontSize: "3rem", marginBottom: "15px", color: accentColor }}>{icon}</div>
       <h3 style={{ fontSize: "1.6rem", fontWeight: "bold", marginBottom: "10px", color: accentColor }}>{title}</h3>
       <p style={{ fontSize: "1rem", lineHeight: "1.6", color: mutedTextColor }}>{description}</p>
@@ -167,25 +150,19 @@ const BenefitCard = ({ icon, title, description, theme }) => {
 };
 
 // New FAQ Card Component
-const FAQCard = ({ question, answer, theme }) => {
-  const cardBgColor = theme === 'dark' ? "var(--background)" : "#F8FBF8"; // Match overall lighter background
-  const textColor = theme === 'dark' ? "var(--foreground)" : "#303030";
-  const mutedTextColor = theme === 'dark' ? "var(--muted-foreground)" : "#606060";
-  const cardBorderColor = theme === 'dark' ? "var(--border)" : "#E0E5E0";
-  const accentColor = "#4CAF50";
-
+const FAQCard = ({ question, answer, theme, accentColor, cardBgColor, textColor, mutedTextColor, cardBorderColor }) => {
   return (
     <div style={{
       padding: "25px",
       background: cardBgColor,
-      borderRadius: "15px", // More rounded cards
-      boxShadow: "0 2px 10px rgba(0,0,0,0.06)", // Softer shadow
+      borderRadius: "15px",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
       border: `1px solid ${cardBorderColor}`,
       transition: "transform 0.2s ease-in-out",
-      "&:hover": {
-        transform: "translateY(-3px)",
-      },
-    }}>
+    }}
+    onMouseOver={(e) => { e.currentTarget.style.transform = "translateY(-3px)"; }}
+    onMouseOut={(e) => { e.currentTarget.style.transform = "translateY(0)"; }}
+    >
       <h3 style={{ fontSize: "1.4rem", fontWeight: "bold", marginBottom: "10px", color: accentColor }}>{question}</h3>
       <p style={{ fontSize: "1rem", lineHeight: "1.6", color: mutedTextColor }}>{answer}</p>
     </div>
@@ -287,34 +264,54 @@ const handleSubmit = async (e) => {
       <header
         style={{
           width: "100%",
-          height: "70px", // Slightly taller header
+          height: "70px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 40px", // More padding
+          padding: "0 20px", // Reduced padding for smaller screens, will adjust via media query
           borderBottom: `1px solid ${headerBorderColor}`,
           background: headerBgColor,
           position: "sticky",
           top: 0,
           zIndex: 10,
-          boxShadow: "0 2px 10px rgba(0,0,0,0.05)", // Softer shadow
+          boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
+          // Media query for larger screens to increase padding
+          "@media (min-width: 768px)": {
+            padding: "0 40px",
+          },
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <img
             src="/logo.png"
             alt="Pulse CRM Logo"
-            style={{ width: "36px", height: "36px", borderRadius: "50%" }} // Slightly larger logo
+            style={{ width: "36px", height: "36px", borderRadius: "50%" }}
           />
           <span style={{ fontWeight: "700", fontSize: "24px", color: textColor, letterSpacing: "-0.8px" }}>
             Pulse
           </span>
         </div>
-        <nav style={{ display: "flex", gap: "25px", alignItems: "center" }}>
-          <NavLink label="Features" navigate={navigate} path="/#features-section" />
-          <NavLink label="Benefits" navigate={navigate} path="/#benefits-section" />
-          <NavLink label="FAQ" navigate={navigate} path="/#faq-section" />
-          <NavLink label="Contact" navigate={navigate} path="/#contact-section" />
+        <nav
+          style={{
+            display: "flex",
+            gap: "20px", // Slightly reduced gap to fit more, will adjust if needed
+            alignItems: "center",
+            flexWrap: "nowrap",
+            flexShrink: 0, // Prevent nav from shrinking
+            // Responsive font size for nav links on smaller screens
+            "@media (max-width: 768px)": {
+              gap: "15px", // Even smaller gap on very small screens
+            },
+            "@media (max-width: 480px)": {
+              gap: "10px", // Minimum gap
+              fontSize: "0.85rem", // Smaller font for nav links
+            },
+          }}
+        >
+          <NavLink label="Features" navigate={navigate} path="/#features-section" textColor={textColor} accentColor={accentColor} />
+          <NavLink label="Benefits" navigate={navigate} path="/#benefits-section" textColor={textColor} accentColor={accentColor} />
+          <NavLink label="FAQ" navigate={navigate} path="/#faq-section" textColor={textColor} accentColor={accentColor} />
+          <NavLink label="Contact" navigate={navigate} path="/#contact-section" textColor={textColor} accentColor={accentColor} />
           <button
             onClick={toggleTheme}
             aria-label="Toggle dark mode"
@@ -322,13 +319,13 @@ const handleSubmit = async (e) => {
               background: "transparent",
               border: "none",
               cursor: "pointer",
-              fontSize: "1.5rem", // Larger icon
+              fontSize: "1.5rem",
               color: accentColor,
               transition: "transform 0.2s ease",
-              "&:hover": {
-                transform: "scale(1.1)",
-              },
+              flexShrink: 0, // Prevent button from shrinking
             }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = "scale(1.1)"; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
           >
             {theme === "dark" ? "🌞" : "🌙"}
           </button>
@@ -341,15 +338,19 @@ const handleSubmit = async (e) => {
               background: accentColor,
               color: "#fff",
               border: "none",
-              borderRadius: "8px", // More rounded button
+              borderRadius: "8px",
               cursor: "pointer",
               transition: "background 0.3s ease, transform 0.2s ease",
-              boxShadow: "0 4px 12px rgba(76, 175, 80, 0.4)", // Accent color shadow
-              "&:hover": {
-                background: "#43A047", // Slightly darker green on hover
-                transform: "translateY(-1px)",
+              boxShadow: "0 4px 12px rgba(76, 175, 80, 0.4)",
+              flexShrink: 0, // Prevent button from shrinking
+              // Responsive padding for smaller screens
+              "@media (max-width: 480px)": {
+                padding: "8px 15px", // Smaller padding on very small screens
+                fontSize: "0.9rem", // Smaller font size
               },
             }}
+            onMouseOver={(e) => { e.currentTarget.style.background = "#43A047"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = accentColor; e.currentTarget.style.transform = "translateY(0)"; }}
           >
             Sign In
           </button>
@@ -360,31 +361,29 @@ const handleSubmit = async (e) => {
       <section
         style={{
           width: "100%",
-          minHeight: "85vh", // Slightly taller hero section
+          minHeight: "85vh",
           display: "flex",
-          flexDirection: "column", // Default to column for mobile
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          padding: "60px 20px", // Adjusted padding
+          padding: "60px 20px",
           background: bgColor,
-          gap: "40px", // Space between major blocks
-          textAlign: "center", // Default text alignment
-          // Media query for desktop layout
+          gap: "40px",
+          textAlign: "center",
           "@media (min-width: 992px)": {
-            flexDirection: "row", // Row direction for desktop
-            justifyContent: "space-evenly", // Distribute space
-            padding: "80px 40px", // More padding on desktop
-            textAlign: "left", // Align text to left on desktop
+            flexDirection: "row",
+            justifyContent: "space-evenly",
+            padding: "80px 40px",
+            textAlign: "left",
           },
         }}
       >
         {/* Left Column: Headline & Main Description Block */}
         <div
           style={{
-            maxWidth: "600px", // Max width for readability
-            // Adjust margin for desktop alignment
+            maxWidth: "600px",
             "@media (min-width: 992px)": {
-              marginRight: "40px", // Space between text and image
+              marginRight: "40px",
             },
           }}
         >
@@ -396,12 +395,11 @@ const handleSubmit = async (e) => {
               lineHeight: "1.2",
               color: textColor,
               textShadow: theme === 'dark' ? "none" : "1px 1px 3px rgba(0,0,0,0.2)",
-              // Responsive font size for larger screens
               "@media (min-width: 768px)": {
                 fontSize: "4.5rem",
               },
               "@media (min-width: 992px)": {
-                fontSize: "4.8rem", // Even larger on desktop
+                fontSize: "4.8rem",
               },
             }}
           >
@@ -410,7 +408,7 @@ const handleSubmit = async (e) => {
               style={{
                 opacity: showCursor ? 1 : 0,
                 transition: 'opacity 0.2s ease-in-out',
-                color: accentColor, // Cursor color
+                color: accentColor,
               }}
             >
               {displayedHeadline.length < headlineText.length ? "|" : ""}
@@ -421,11 +419,10 @@ const handleSubmit = async (e) => {
               fontSize: "1.2rem",
               lineHeight: "1.7",
               color: mutedTextColor,
-              maxWidth: "700px", // Constrain width for readability
-              margin: "0 auto 30px auto", // Adjusted margin for spacing below paragraph
-              // Adjust margin for desktop alignment
+              maxWidth: "700px",
+              margin: "0 auto 30px auto",
               "@media (min-width: 992px)": {
-                margin: "0 0 30px 0", // No auto margin on left/right for desktop
+                margin: "0 0 30px 0",
               },
             }}
           >
@@ -437,9 +434,8 @@ const handleSubmit = async (e) => {
             style={{
               display: "flex",
               flexDirection: "column",
-              alignItems: "center", // Center for mobile
+              alignItems: "center",
               gap: "15px",
-              // Align to left for desktop
               "@media (min-width: 992px)": {
                 alignItems: "flex-start",
               },
@@ -458,11 +454,9 @@ const handleSubmit = async (e) => {
                 cursor: "pointer",
                 transition: "background 0.3s ease, transform 0.2s ease",
                 boxShadow: "0 4px 12px rgba(76, 175, 80, 0.3)",
-                "&:hover": {
-                  background: "#43A047",
-                  transform: "translateY(-2px)",
-                },
               }}
+              onMouseOver={(e) => { e.currentTarget.style.background = "#43A047"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+              onMouseOut={(e) => { e.currentTarget.style.background = accentColor; e.currentTarget.style.transform = "translateY(0)"; }}
             >
               Start Free Trial
             </button>
@@ -473,7 +467,8 @@ const handleSubmit = async (e) => {
             }}>
               No credit card required
             </p>
-            <p style={{ marginTop: "20px" }}>
+            {/* REMOVED: Forgot your password? link */}
+            {/* <p style={{ marginTop: "20px" }}>
               <a
                 href="/forgot-password"
                 onClick={(e) => {
@@ -492,7 +487,7 @@ const handleSubmit = async (e) => {
               >
                 Forgot your password?
               </a>
-            </p>
+            </p> */}
           </div>
         </div>
 
@@ -500,15 +495,14 @@ const handleSubmit = async (e) => {
         <div
           style={{
             width: "100%",
-            maxWidth: "700px", // Max width for the image on mobile/tablet
-            margin: "0 auto", // Center for mobile/tablet
+            maxWidth: "700px",
+            margin: "0 auto",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            // Adjust width for desktop layout
             "@media (min-width: 992px)": {
-              maxWidth: "55%", // Take up more space on desktop
-              margin: "0", // Remove auto margin for desktop
+              maxWidth: "55%",
+              margin: "0",
             },
           }}
         >
@@ -528,16 +522,14 @@ const handleSubmit = async (e) => {
       </section>
 
       {/* Privacy/CTA Block (moved closer to Hero and adjusted for two-column layout) */}
-      {/* This block was previously inside the Hero section but is now a separate section
-          to allow for the two-column hero layout. Its content is still relevant to the hero. */}
       <section
         style={{
-          maxWidth: "900px", // Max width for readability
-          margin: "60px auto", // Centered below hero
-          padding: "0 20px", // Padding for content
+          maxWidth: "900px",
+          margin: "60px auto",
+          padding: "0 20px",
           display: "flex",
           flexDirection: "column",
-          alignItems: "center", // Center content
+          alignItems: "center",
           textAlign: "center",
         }}
       >
@@ -554,123 +546,123 @@ const handleSubmit = async (e) => {
       </section>
 
       {/* Features Section */}
-      <SectionWithAnimation id="features-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} title="Core Capabilities">
+      <SectionWithAnimation id="features-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} textColor={textColor} mutedTextColor={mutedTextColor} title="Core Capabilities">
         <FeatureCard
           icon="👥"
           title="Contact Management"
           description="Centralized database for detailed profiles including names, emails, phones, and social media."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FeatureCard
           icon="💬"
           title="Interaction Tracking"
           description="Maintain a chronological log of conversations, meetings, and relationship timelines."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FeatureCard
           icon="⏰"
           title="Reminder Setting"
           description="Automated follow-ups and alerts for birthdays, anniversaries, and important dates."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FeatureCard
           icon="📝"
           title="Note-taking"
           description="Add rich text notes and personal insights to personalize interactions."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FeatureCard
           icon="⚙️"
           title="Customizable Views"
           description="Filter and sort contacts, and manage custom groups for focused outreach."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FeatureCard
           icon="🔗"
           title="Seamless Integrations"
           description="Connect with email, calendar, social media, and Google Contacts for streamlined workflows."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FeatureCard
           icon="📱"
           title="Anywhere Access"
           description="Manage relationships on the go with cross-device compatibility and responsive design."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
       </SectionWithAnimation>
 
       {/* Benefits Section */}
-      <SectionWithAnimation id="benefits-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} title="Why Pulse CRM?">
+      <SectionWithAnimation id="benefits-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} textColor={textColor} mutedTextColor={mutedTextColor} title="Why Pulse CRM?">
         <BenefitCard
           icon="✨"
           title="Never Miss an Opportunity"
           description="Stay on top of follow-ups and important dates, ensuring no valuable connection or opportunity slips through the cracks."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <BenefitCard
           icon="🤝"
           title="Stronger Relationships"
           description="Personalize every conversation with detailed interaction logs and comprehensive notes, fostering trust and deeper bonds."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <BenefitCard
           icon="⚡"
           title="Increased Efficiency"
           description="Streamline your workflow with centralized information and integrations, freeing up time for meaningful engagement."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <BenefitCard
           icon="🧠"
           title="Better Decisions"
           description="Gain valuable context from interaction history and notes to make more informed decisions about nurturing relationships."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <BenefitCard
           icon="🗂️"
           title="Enhanced Organization"
           description="Organize your entire network in a structured and customizable way, easily finding contacts when you need them."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <BenefitCard
           icon="🚀"
           title="Flexibility & Convenience"
           description="Manage relationships on the go with seamless accessibility across all your devices, always at your fingertips."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <BenefitCard
           icon="🎯"
           title="Personalized Outreach"
           description="Tailor your communication using detailed insights, making your contacts feel valued and understood."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
       </SectionWithAnimation>
 
       {/* New FAQ Section for Google OAuth Reviewers */}
-      <SectionWithAnimation id="faq-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} title="Frequently Asked Questions (FAQ)">
+      <SectionWithAnimation id="faq-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} textColor={textColor} mutedTextColor={mutedTextColor} title="Frequently Asked Questions (FAQ)">
         <FAQCard
           question="1. What Google user data does Pulse CRM access and why?"
           answer="Pulse CRM accesses your Google Contacts (specifically, the 'contacts.readonly' and 'contacts.other.readonly' scopes) to display your contacts within the application interface. This includes both contacts you've explicitly saved and people you've interacted with on Gmail (even if not manually saved as a contact). This access is solely to enable you to view, organize, and interact with your entire network directly within Pulse CRM. We only request the minimum necessary access to provide core CRM functionalities."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
           question="2. Does Pulse CRM store my Google Contacts data?"
           answer="No. Pulse CRM **does not store or retain any of your Google Contacts data on our servers.** All processing of your Google Contacts occurs in real-time directly within your browser session. This means your contact details (names, emails, phone numbers, etc.) are fetched from Google and displayed, but are not saved by Pulse CRM. When you close the application or log out, your Google Contacts data is no longer accessible by Pulse CRM."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
           question="3. How does Pulse CRM use my Google Contacts data if it doesn't store it?"
           answer="Your Google Contacts data is fetched directly from Google's API and displayed temporarily in your browser for your current session. This allows you to view your contacts, search them, and link your custom notes, reminders, and interaction logs (which *are* stored on our secure servers) to those contacts using their unique Google Contact ID. This ensures your personal contact details remain exclusively with Google, while your CRM-specific insights are managed by Pulse CRM. Nothing from your Google Contacts is stored unless you explicitly create a new note, reminder, or interaction record within Pulse CRM."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
           question="4. How does Pulse CRM ensure my privacy and data security?"
           answer="We prioritize your privacy and data security. For Google Contacts, we implement a strict 'no storage' policy for the contact details themselves. For any data you do create and store within Pulse CRM (like notes or reminders), we use secure server infrastructure, industry-standard encryption, and strict access controls. We adhere to our Privacy Policy, which transparently outlines our data handling practices and our commitment to protecting your information."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
           question="5. How can I revoke Pulse CRM's access to my Google account?"
           answer="You can revoke Pulse CRM's access to your Google account at any time. Simply go to your Google Account settings, navigate to 'Security,' then 'Third-party apps with account access,' and remove Pulse CRM from the list. This will immediately stop Pulse CRM from accessing your Google Contacts, and any notes or reminders you created in Pulse CRM that were linked to those contacts will remain, but without the original contact's details."
-          theme={theme}
+          theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
       </SectionWithAnimation>
 
@@ -693,11 +685,9 @@ const handleSubmit = async (e) => {
             cursor: "pointer",
             transition: "background 0.3s ease, transform 0.2s ease",
             boxShadow: "0 6px 20px rgba(76, 175, 80, 0.5)",
-            "&:hover": {
-              background: "#43A047",
-              transform: "translateY(-2px)",
-            },
           }}
+          onMouseOver={(e) => { e.currentTarget.style.background = "#43A047"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+          onMouseOut={(e) => { e.currentTarget.style.background = accentColor; e.currentTarget.style.transform = "translateY(0)"; }}
         >
           Get Started Now
         </button>
@@ -797,42 +787,47 @@ const handleSubmit = async (e) => {
               borderRadius: "8px",
               cursor: "pointer",
               transition: "background 0.3s ease, transform 0.2s ease",
-              boxShadow: "0 4px 15px rgba(76, 175, 80, 0.4)",
-              "&:hover": {
-                background: "#43A047",
-                transform: "translateY(-2px)",
-              },
+              boxShadow: "0 4px 12px rgba(76, 175, 80, 0.3)",
             }}
+            onMouseOver={(e) => { e.currentTarget.style.background = "#43A047"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = accentColor; e.currentTarget.style.transform = "translateY(0)"; }}
           >
-            {sending ? "Sending..." : sent ? "Message Sent!" : "Send Message"}
+            {sending ? "Sending..." : "Send Message"}
           </button>
         </form>
       </section>
 
-      {/* Footer */}
+      {/* Footer Section */}
       <footer
         style={{
+          background: headerBgColor,
+          borderTop: `1px solid ${headerBorderColor}`,
           padding: "40px 20px",
           textAlign: "center",
-          borderTop: `1px solid ${sectionBorderColor}`,
-          marginTop: "0",
           color: mutedTextColor,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: "20px",
-          "@media (min-width: 768px)": {
-            flexDirection: "row",
-            justifyContent: "space-between",
-            padding: "40px 40px",
-          },
+          fontSize: "0.9rem",
         }}
       >
-        <p>&copy; {new Date().getFullYear()} Pulse CRM. All rights reserved.</p>
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", justifyContent: "center" }}>
-          <FooterLink label="Privacy Policy" path="/privacy.html" />
-          <FooterLink label="Terms of Service" path="/terms.html" />
-          <FooterLink label="Affiliate" path="/affiliate.html" />
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "30px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+              <img src="/logo.png" alt="Pulse CRM Logo" style={{ width: "30px", height: "30px", borderRadius: "50%" }} />
+              <span style={{ fontWeight: "700", fontSize: "20px", color: textColor }}>Pulse</span>
+            </div>
+            <p style={{ maxWidth: "600px", margin: "0 auto", lineHeight: "1.6" }}>
+              Pulse CRM helps you nurture your relationships, remember important details, and stay connected with the people who matter most.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "20px 30px", marginBottom: "30px" }}>
+            <FooterLink label="Privacy Policy" path="/privacy-policy" accentColor={accentColor} mutedTextColor={mutedTextColor} />
+            <FooterLink label="Terms of Service" path="/terms-of-service" accentColor={accentColor} mutedTextColor={mutedTextColor} />
+            {/* REMOVED: Affiliate link */}
+            {/* <FooterLink label="Affiliate Program" path="/affiliate" accentColor={accentColor} mutedTextColor={mutedTextColor} /> */}
+            <FooterLink label="Support" path="/support" accentColor={accentColor} mutedTextColor={mutedTextColor} />
+          </div>
+
+          <p>&copy; {new Date().getFullYear()} Pulse CRM. All rights reserved.</p>
         </div>
       </footer>
     </div>
