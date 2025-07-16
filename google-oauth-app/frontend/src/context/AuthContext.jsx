@@ -8,7 +8,7 @@ import React, {
   useCallback,
   useRef
 } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } = require("react-router-dom");
 
 const AuthContext = createContext(null);
 
