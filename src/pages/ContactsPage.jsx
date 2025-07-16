@@ -6,7 +6,6 @@ import { useAuth } from "../context/AuthContext";
 
 export default function ContactsPage() {
   const navigate = useNavigate();
-  // Get theme from useAuth
   const { isAuthenticated, loading, logout, theme } = useAuth();
   const accent = "#25D366"; // This remains the primary accent color
 
@@ -118,7 +117,7 @@ export default function ContactsPage() {
     } finally {
       setDataLoading(false);
     }
-  }, [isAuthenticated, loading, logout, BACKEND_API_BASE_URL]); // Dependencies for fetchContacts
+  }, [isAuthenticated, loading, logout, BACKEND_API_BASE_URL]);
 
 
   useEffect(() => {
@@ -368,7 +367,7 @@ export default function ContactsPage() {
           {/* Pinned Contacts Section */}
           {pinnedContacts.length > 0 && (
             <div style={{ marginBottom: "40px" }}>
-              <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accentColor }}> {/* Use accentColor */}
+              <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accentColor }}>
                 Pinned Contacts ⭐
               </h2>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
@@ -376,8 +375,8 @@ export default function ContactsPage() {
                   <ContactCard
                     key={contact.id}
                     contact={contact}
-                    accent={accent} // Keep original accent for photo border
-                    accentColor={accentColor} // Pass new accentColor for other elements
+                    accent={accent}
+                    accentColor={accentColor}
                     isPinned={true}
                     onTogglePin={togglePinContact}
                     onClick={() => handleContactClick(contact)}
@@ -385,7 +384,7 @@ export default function ContactsPage() {
                     cardBorderColor={cardBorderColor}
                     textColor={textColor}
                     mutedTextColor={mutedTextColor}
-                    theme={theme} // Pass theme for conditional styling in card
+                    theme={theme}
                   />
                 ))}
               </div>
@@ -393,7 +392,7 @@ export default function ContactsPage() {
           )}
 
           {/* All Other Contacts Section */}
-          <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accentColor }}> {/* Use accentColor */}
+          <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accentColor }}>
             All Contacts
           </h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
@@ -401,8 +400,8 @@ export default function ContactsPage() {
               <ContactCard
                 key={contact.id}
                 contact={contact}
-                accent={accent} // Keep original accent for photo border
-                accentColor={accentColor} // Pass new accentColor for other elements
+                accent={accent}
+                accentColor={accentColor}
                 isPinned={false}
                 onTogglePin={togglePinContact}
                 onClick={() => handleContactClick(contact)}
@@ -410,7 +409,7 @@ export default function ContactsPage() {
                 cardBorderColor={cardBorderColor}
                 textColor={textColor}
                 mutedTextColor={mutedTextColor}
-                theme={theme} // Pass theme for conditional styling in card
+                theme={theme}
               />
             ))}
           </div>
@@ -423,12 +422,12 @@ export default function ContactsPage() {
           contact={selectedContact}
           onClose={closeContactDetailsModal}
           accent={accent}
-          accentColor={accentColor} // Pass new accentColor
+          accentColor={accentColor}
           generateVCard={generateVCard}
           cardBgColor={cardBgColor}
           textColor={textColor}
           mutedTextColor={mutedTextColor}
-          theme={theme} // Pass theme for modal styling
+          theme={theme}
         />
       )}
     </div>
@@ -441,10 +440,10 @@ function ContactCard({ contact, accent, accentColor, isPinned, onTogglePin, onCl
   return (
     <div
       style={{
-        border: `1px solid ${isPinned ? "#FFD700" : cardBorderColor}`, // Gold for pinned, themed for unpinned
+        border: `1px solid ${isPinned ? "#FFD700" : cardBorderColor}`,
         borderRadius: "8px",
         padding: "20px",
-        background: isPinned ? (isDark ? "#3A3A20" : "#FFFBE6") : cardBgColor, // Darker/Lighter background for pinned
+        background: isPinned ? (isDark ? "#3A3A20" : "#FFFBE6") : cardBgColor,
         boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
         display: "flex",
         flexDirection: "column",
@@ -472,7 +471,7 @@ function ContactCard({ contact, accent, accentColor, isPinned, onTogglePin, onCl
           border: "none",
           cursor: "pointer",
           fontSize: "24px",
-          color: isPinned ? "#FFD700" : mutedTextColor, // Gold for pinned, themed grey for unpinned
+          color: isPinned ? "#FFD700" : mutedTextColor,
           transition: "color 0.2s",
         }}
       >
@@ -491,14 +490,14 @@ function ContactCard({ contact, accent, accentColor, isPinned, onTogglePin, onCl
           {contact.name.charAt(0).toUpperCase()}
         </div>
       )}
-      <h3 style={{ margin: "0", color: textColor, textAlign: "center" }}>{contact.name}</h3> {/* Use themed textColor */}
+      <h3 style={{ margin: "0", color: textColor, textAlign: "center" }}>{contact.name}</h3>
       {contact.email !== "No Email" && (
-        <p style={{ margin: "0", fontSize: "14px", color: mutedTextColor, textAlign: "center" }}> {/* Use themed mutedTextColor */}
+        <p style={{ margin: "0", fontSize: "14px", color: mutedTextColor, textAlign: "center" }}>
           Email: {contact.email}
         </p>
       )}
       {contact.phone !== "No Phone" && (
-        <p style={{ margin: "0", fontSize: "14px", color: mutedTextColor, textAlign: "center" }}> {/* Use themed mutedTextColor */}
+        <p style={{ margin: "0", fontSize: "14px", color: mutedTextColor, textAlign: "center" }}>
           Phone: {contact.phone}
         </p>
       )}
@@ -521,7 +520,6 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
       link.href = URL.createObjectURL(blob);
       link.download = `${contact.name.replace(/\s/g, '_')}.vcf`;
       document.body.appendChild(link);
-      link.click();
       document.body.removeChild(link);
       console.warn("Download initiated. If it didn't work, ensure FileSaver.js is loaded.");
     }
@@ -543,7 +541,7 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
       boxSizing: "border-box",
     }} onClick={onClose}>
       <div style={{
-        background: cardBgColor, // Use themed background
+        background: cardBgColor,
         padding: "30px",
         borderRadius: "12px",
         boxShadow: "0 8px 16px rgba(0,0,0,0.4)",
@@ -552,7 +550,7 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
         gap: "15px",
         width: "90%",
         maxWidth: "500px",
-        color: textColor, // Use themed text color
+        color: textColor,
         position: "relative",
         overflowY: "auto",
         maxHeight: "90vh",
@@ -566,14 +564,14 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
             background: "none",
             border: "none",
             fontSize: "24px",
-            color: textColor, // Use themed text color
+            color: textColor,
             cursor: "pointer",
           }}
         >
           &times;
         </button>
 
-        <h2 style={{ color: accentColor, marginBottom: "10px" }}>{contact.name}</h2> {/* Use accentColor */}
+        <h2 style={{ color: accentColor, marginBottom: "10px" }}>{contact.name}</h2>
         {contact.photo ? (
           <img
             src={contact.photo}
@@ -590,7 +588,7 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
         {/* Conditional rendering for Phone Actions */}
         {contact.phone && contact.phone !== "No Phone" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "10px" }}>
-            <p style={{ margin: "0", color: textColor }}><strong>Phone:</strong> {contact.phone}</p> {/* Use themed textColor */}
+            <p style={{ margin: "0", color: textColor }}><strong>Phone:</strong> {contact.phone}</p>
             <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
               <a
                 href={`tel:${contact.phone}`}
@@ -649,6 +647,8 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
               </a>
               <a
                 href={`skype:${contact.phone}?call`}
+                target="_blank" {/* Added target="_blank" */}
+                rel="noopener noreferrer" {/* Added rel="noopener noreferrer" */}
                 style={{
                   padding: "8px 15px",
                   background: "#00AFF0",
@@ -671,7 +671,7 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
         {/* Conditional rendering for Email Action */}
         {contact.email && contact.email !== "No Email" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "10px" }}>
-            <p style={{ margin: "0", color: textColor }}><strong>Email:</strong> {contact.email}</p> {/* Use themed textColor */}
+            <p style={{ margin: "0", color: textColor }}><strong>Email:</strong> {contact.email}</p>
             <a
               href={`mailto:${contact.email}`}
               style={{
@@ -692,7 +692,7 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
           </div>
         )}
 
-        <p style={{ color: mutedTextColor }}><strong>Last Updated:</strong> {contact.lastUpdated !== "N/A" ? new Date(contact.lastUpdated).toLocaleString() : "N/A"}</p> {/* Use themed mutedTextColor */}
+        <p style={{ color: mutedTextColor }}><strong>Last Updated:</strong> {contact.lastUpdated !== "N/A" ? new Date(contact.lastUpdated).toLocaleString() : "N/A"}</p>
 
         <div style={{ marginTop: "20px", display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
           <button
@@ -717,4 +717,3 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
     </div>
   );
 }
-
