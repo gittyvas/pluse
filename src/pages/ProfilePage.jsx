@@ -150,7 +150,7 @@ export default function ProfilePage() {
       });
       const data = res.data;
 
-      setProfile(data); // Set the entire profile object
+      setProfile(data.user); // ✅ This ensures you're setting the actual user profile object
       setEmailNotifications(data.emailNotifications ?? true);
       setPushNotifications(data.pushNotifications ?? false);
 
