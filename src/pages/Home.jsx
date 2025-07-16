@@ -301,7 +301,7 @@ const handleSubmit = async (e) => {
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <img
             src="/logo.png"
-            alt="Pluse CRM Logo" {/* Changed from Pulse CRM Logo */}
+            alt="Pluse CRM Logo"
             style={{ width: "36px", height: "36px", borderRadius: "50%" }}
           />
           <span style={{ fontWeight: "700", fontSize: "24px", color: textColor, letterSpacing: "-0.8px" }}>
@@ -441,7 +441,7 @@ const handleSubmit = async (e) => {
               },
             }}
           >
-            Organize your network, remember special moments, and never forget to follow up. Pluse CRM syncs with your Google Contacts to help you manage relationships effortlessly. {/* Changed from Pulse CRM */}
+            Organize your network, remember special moments, and never forget to follow up. Pluse CRM syncs with your Google Contacts to help you manage relationships effortlessly.
           </p>
 
           {/* CTA Button and small text */}
@@ -503,7 +503,7 @@ const handleSubmit = async (e) => {
         >
           <img
             src="/illustrations/dashboard-green.png"
-            alt="Pluse CRM dashboard preview" {/* Changed from Pulse CRM */}
+            alt="Pluse CRM dashboard preview"
             style={{
               width: "100%",
               height: "auto",
@@ -587,7 +587,7 @@ const handleSubmit = async (e) => {
       </SectionWithAnimation>
 
       {/* Benefits Section */}
-      <SectionWithAnimation id="benefits-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} textColor={textColor} mutedTextColor={mutedTextColor} title="Why Pluse CRM?"> {/* Changed from Pulse CRM */}
+      <SectionWithAnimation id="benefits-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} textColor={textColor} mutedTextColor={mutedTextColor} title="Why Pluse CRM?">
         <BenefitCard
           icon="✨"
           title="Never Miss an Opportunity"
@@ -621,7 +621,7 @@ const handleSubmit = async (e) => {
         <BenefitCard
           icon="🚀"
           title="Flexibility & Convenience"
-          description="Manage relationships on the go with seamless accessibility across all your devices, always at your fingertips."
+          description="Manage relationships on the go with cross-device compatibility and responsive design."
           theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <BenefitCard
@@ -635,28 +635,28 @@ const handleSubmit = async (e) => {
       {/* New FAQ Section for Google OAuth Reviewers */}
       <SectionWithAnimation id="faq-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} textColor={textColor} mutedTextColor={mutedTextColor} title="Frequently Asked Questions (FAQ)">
         <FAQCard
-          question="1. What Google user data does Pluse CRM access and why?" {/* Changed from Pulse CRM */}
-          answer="Pluse CRM accesses your Google Contacts (specifically, the 'contacts.readonly' and 'contacts.other.readonly' scopes) to display your contacts within the application interface. This includes both contacts you've explicitly saved and people you've interacted with on Gmail (even if not manually saved as a contact). This access is solely to enable you to view, organize, and interact with your entire network directly within Pluse CRM. We only request the minimum necessary access to provide core CRM functionalities." {/* Changed from Pulse CRM */}
+          question="1. What Google user data does Pluse CRM access and why?"
+          answer="Pluse CRM accesses your Google Contacts (specifically, the 'contacts.readonly' and 'contacts.other.readonly' scopes) to display your contacts within the application interface. This includes both contacts you've explicitly saved and people you've interacted with on Gmail (even if not manually saved as a contact). This access is solely to enable you to view, organize, and interact with your entire network directly within Pluse CRM. We only request the minimum necessary access to provide core CRM functionalities."
           theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
-          question="2. Does Pluse CRM store my Google Contacts data?" {/* Changed from Pulse CRM */}
-          answer="No. Pluse CRM **does not store or retain any of your Google Contacts data on our servers.** All processing of your Google Contacts occurs in real-time directly within your browser session. This means your contact details (names, emails, phone numbers, etc.) are fetched from Google and displayed, but are not saved by Pluse CRM. When you close the application or log out, your Google Contacts data is no longer accessible by Pluse CRM." {/* Changed from Pulse CRM */}
+          question="2. Does Pluse CRM store my Google Contacts data?"
+          answer="No. Pluse CRM **does not store or retain any of your Google Contacts data on our servers.** All processing of your Google Contacts occurs in real-time directly within your browser session. This means your contact details (names, emails, phone numbers, etc.) are fetched from Google and displayed, but are not saved by Pluse CRM. When you close the application or log out, your Google Contacts data is no longer accessible by Pluse CRM."
           theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
-          question="3. How does Pluse CRM use my Google Contacts data if it doesn't store it?" {/* Changed from Pulse CRM */}
-          answer="Your Google Contacts data is fetched directly from Google's API and displayed temporarily in your browser for your current session. This allows you to view your contacts, search them, and link your custom notes, reminders, and interaction logs (which *are* stored on our secure servers) to those contacts using their unique Google Contact ID. This ensures your personal contact details remain exclusively with Google, while your CRM-specific insights are managed by Pluse CRM. Nothing from your Google Contacts is stored unless you explicitly create a new note, reminder, or interaction record within Pluse CRM." {/* Changed from Pulse CRM */}
+          question="3. How does Pluse CRM use my Google Contacts data if it doesn't store it?"
+          answer="Your Google Contacts data is fetched directly from Google's API and displayed temporarily in your browser for your current session. This allows you to view your contacts, search them, and link your custom notes, reminders, and interaction logs (which *are* stored on our secure servers) to those contacts using their unique Google Contact ID. This ensures your personal contact details remain exclusively with Google, while your CRM-specific insights are managed by Pluse CRM. Nothing from your Google Contacts is stored unless you explicitly create a new note, reminder, or interaction record within Pluse CRM."
           theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
-          question="4. How does Pluse CRM ensure my privacy and data security?" {/* Changed from Pulse CRM */}
-          answer="We prioritize your privacy and data security. For Google Contacts, we implement a strict 'no storage' policy for the contact details themselves. For any data you do create and store within Pluse CRM (like notes or reminders), we use secure server infrastructure, industry-standard encryption, and strict access controls. We adhere to our Privacy Policy, which transparently outlines our data handling practices and our commitment to protecting your information." {/* Changed from Pulse CRM */}
+          question="4. How does Pluse CRM ensure my privacy and data security?"
+          answer="We prioritize your privacy and data security. For Google Contacts, we implement a strict 'no storage' policy for the contact details themselves. For any data you do create and store within Pluse CRM (like notes or reminders), we use secure server infrastructure, industry-standard encryption, and strict access controls. We adhere to our Privacy Policy, which transparently outlines our data handling practices and our commitment to protecting your information."
           theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
-          question="5. How can I revoke Pluse CRM's access to my Google account?" {/* Changed from Pulse CRM */}
-          answer="You can revoke Pluse CRM's access to your Google account at any time. Simply go to your Google Account settings, navigate to 'Security,' then 'Third-party apps with account access,' and remove Pluse CRM from the list. This will immediately stop Pluse CRM from accessing your Google Contacts, and any notes or reminders you created in Pluse CRM that were linked to those contacts will remain, but without the original contact's details." {/* Changed from Pulse CRM */}
+          question="5. How can I revoke Pluse CRM's access to my Google account?"
+          answer="You can revoke Pluse CRM's access to your Google account at any time. Simply go to your Google Account settings, navigate to 'Security,' then 'Third-party apps with account access,' and remove Pluse CRM from the list. This will immediately stop Pluse CRM from accessing your Google Contacts, and any notes or reminders you created in Pluse CRM that were linked to those contacts will remain, but without the original contact's details."
           theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
       </SectionWithAnimation>
@@ -665,7 +665,7 @@ const handleSubmit = async (e) => {
       <section style={{ padding: "60px 20px", textAlign: "center", background: sectionBgColor, borderTop: `1px solid ${sectionBorderColor}`, borderBottom: `1px solid ${sectionBorderColor}`, margin: "60px 0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "30px" }}>
         <h2 style={{ fontSize: "2.5rem", fontWeight: "bold", color: accentColor }}>Ready to Transform Your Connections?</h2>
         <p style={{ fontSize: "1.2rem", maxWidth: "800px", color: mutedTextColor }}>
-          Join Pluse CRM today and start building stronger, more meaningful relationships with ease. {/* Changed from Pulse CRM */}
+          Join Pluse CRM today and start building stronger, more meaningful relationships with ease.
         </p>
         <button
           onClick={handleSignInSignUp}
@@ -806,11 +806,11 @@ const handleSubmit = async (e) => {
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "30px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
-              <img src="/logo.png" alt="Pluse CRM Logo" style={{ width: "30px", height: "30px", borderRadius: "50%" }} /> {/* Changed from Pulse CRM */}
-              <span style={{ fontWeight: "700", fontSize: "20px", color: textColor }}>Pluse</span> {/* Changed from Pulse */}
+              <img src="/logo.png" alt="Pluse CRM Logo" style={{ width: "30px", height: "30px", borderRadius: "50%" }} />
+              <span style={{ fontWeight: "700", fontSize: "20px", color: textColor }}>Pluse</span>
             </div>
             <p style={{ maxWidth: "600px", margin: "0 auto", lineHeight: "1.6" }}>
-              Pluse CRM helps you nurture your relationships, remember important details, and stay connected with the people who matter most. {/* Changed from Pulse CRM */}
+              Pluse CRM helps you nurture your relationships, remember important details, and stay connected with the people who matter most.
             </p>
           </div>
 
@@ -843,7 +843,7 @@ const handleSubmit = async (e) => {
             </a>
           </div>
 
-          <p>&copy; {new Date().getFullYear()} Pluse CRM. All rights reserved.</p> {/* Changed from Pulse CRM */}
+          <p>&copy; {new Date().getFullYear()} Pluse CRM. All rights reserved.</p>
         </div>
       </footer>
     </div>
