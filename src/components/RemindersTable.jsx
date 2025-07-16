@@ -1,66 +1,3 @@
-// google-oauth-app/frontend/src/components/RemindersTable.jsx
-
-import React from 'react';
-
-function RemindersTable({ reminders }) {
-  if (!reminders || reminders.length === 0) {
-    return (
-      <div className="p-6 bg-gray-700 rounded-lg shadow-md text-gray-300 text-center">
-        No upcoming reminders found. Make sure you granted calendar permission during Google login.
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto bg-gray-700 rounded-lg shadow-md">
-      <table className="min-w-full divide-y divide-gray-600">
-        <thead className="bg-gray-600">
-          <tr>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider rounded-tl-lg">
-              Event
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
-              Date & Time
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider">
-              Location
-            </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-200 uppercase tracking-wider rounded-tr-lg">
-              Link
-            </th>
-          </tr>
-        </thead>
-        <tbody className="bg-gray-800 divide-y divide-gray-700">
-          {reminders.map((reminder) => (
-            <tr key={reminder.id} className="hover:bg-gray-700 transition-colors duration-150">
-              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                {reminder.summary}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                {new Date(reminder.start).toLocaleString()}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                {reminder.location || 'N/A'}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-400">
-                {reminder.htmlLink && (
-                  <a href={reminder.htmlLink} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                    View
-                  </a>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-export default RemindersTable;
-```
-
-```javascript
 // google-oauth-app/frontend/src/pages/Reminders.jsx
 
 import React, { useState, useEffect } from 'react';
@@ -71,34 +8,40 @@ function Reminders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const BACKEND_API_BASE_URL = import.meta.env.VITE_API_URL;
+
   useEffect(() => {
     const fetchReminders = async () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch('https://backend.gitthit.com.ng/api/reminders/list', {
-          credentials: 'include'
+        const response = await fetch(`${BACKEND_API_BASE_URL}/api/reminders`, {
+          method: "GET",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" }
         });
-        if (response.ok) {
-          const data = await response.json();
-          setReminders(data.reminders);
-        } else {
-          throw new Error(`Failed to fetch reminders: ${response.statusText}`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch reminders: ${response.status} - ${errorText}`);
         }
+
+        const data = await response.json();
+        setReminders(data);
       } catch (err) {
         console.error('Error fetching reminders:', err);
-        setError('Failed to load reminders. ' + err.message);
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
     fetchReminders();
-  }, []);
+  }, [BACKEND_API_BASE_URL]);
 
   return (
     <div className="p-6 bg-gray-800 rounded-lg shadow text-gray-50 flex-grow">
-      <h2 className="text-3xl font-bold mb-6">Your Upcoming Reminders</h2>
+      <h2 className="text-3xl font-bold mb-6">Your Saved Reminders</h2>
       {loading && <div className="text-gray-300">Loading reminders...</div>}
       {error && <div className="text-red-400">Error: {error}</div>}
       {!loading && !error && <RemindersTable reminders={reminders} />}
