@@ -30,10 +30,9 @@ const NavLink = ({ label, navigate, path, textColor, accentColor }) => {
         fontWeight: "500",
         fontSize: "1rem",
         transition: "color 0.2s ease",
-        flexShrink: 0, // Prevent nav links from shrinking
-        // Responsive font size for smaller screens
+        flexShrink: 0,
         "@media (max-width: 768px)": {
-          fontSize: "0.9rem", // Slightly smaller font on smaller screens
+          fontSize: "0.9rem",
         },
       }}
       onMouseOver={(e) => (e.currentTarget.style.color = accentColor)}
@@ -45,7 +44,26 @@ const NavLink = ({ label, navigate, path, textColor, accentColor }) => {
 };
 
 // Reusable FooterLink Component
-const FooterLink = ({ label, path, accentColor, mutedTextColor }) => {
+const FooterLink = ({ label, path, accentColor, mutedTextColor, isExternal = false }) => {
+  if (isExternal) {
+    return (
+      <a
+        href={path}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          textDecoration: "none",
+          color: mutedTextColor,
+          fontSize: "0.9rem",
+          transition: "color 0.2s ease",
+        }}
+        onMouseOver={(e) => (e.currentTarget.style.color = accentColor)}
+        onMouseOut={(e) => (e.currentTarget.style.color = mutedTextColor)}
+      >
+        {label}
+      </a>
+    );
+  }
   return (
     <a
       href={path}
@@ -268,14 +286,13 @@ const handleSubmit = async (e) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "0 20px", // Reduced padding for smaller screens, will adjust via media query
+          padding: "0 20px",
           borderBottom: `1px solid ${headerBorderColor}`,
           background: headerBgColor,
           position: "sticky",
           top: 0,
           zIndex: 10,
           boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-          // Media query for larger screens to increase padding
           "@media (min-width: 768px)": {
             padding: "0 40px",
           },
@@ -294,17 +311,16 @@ const handleSubmit = async (e) => {
         <nav
           style={{
             display: "flex",
-            gap: "20px", // Slightly reduced gap to fit more, will adjust if needed
+            gap: "20px",
             alignItems: "center",
             flexWrap: "nowrap",
-            flexShrink: 0, // Prevent nav from shrinking
-            // Responsive font size for nav links on smaller screens
+            flexShrink: 0,
             "@media (max-width: 768px)": {
-              gap: "15px", // Even smaller gap on very small screens
+              gap: "15px",
             },
             "@media (max-width: 480px)": {
-              gap: "10px", // Minimum gap
-              fontSize: "0.85rem", // Smaller font for nav links
+              gap: "10px",
+              fontSize: "0.85rem",
             },
           }}
         >
@@ -322,7 +338,7 @@ const handleSubmit = async (e) => {
               fontSize: "1.5rem",
               color: accentColor,
               transition: "transform 0.2s ease",
-              flexShrink: 0, // Prevent button from shrinking
+              flexShrink: 0,
             }}
             onMouseOver={(e) => { e.currentTarget.style.transform = "scale(1.1)"; }}
             onMouseOut={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
@@ -342,11 +358,10 @@ const handleSubmit = async (e) => {
               cursor: "pointer",
               transition: "background 0.3s ease, transform 0.2s ease",
               boxShadow: "0 4px 12px rgba(76, 175, 80, 0.4)",
-              flexShrink: 0, // Prevent button from shrinking
-              // Responsive padding for smaller screens
+              flexShrink: 0,
               "@media (max-width: 480px)": {
-                padding: "8px 15px", // Smaller padding on very small screens
-                fontSize: "0.9rem", // Smaller font size
+                padding: "8px 15px",
+                fontSize: "0.9rem",
               },
             }}
             onMouseOver={(e) => { e.currentTarget.style.background = "#43A047"; e.currentTarget.style.transform = "translateY(-1px)"; }}
@@ -468,26 +483,6 @@ const handleSubmit = async (e) => {
               No credit card required
             </p>
             {/* REMOVED: Forgot your password? link */}
-            {/* <p style={{ marginTop: "20px" }}>
-              <a
-                href="/forgot-password"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate("/forgot-password");
-                }}
-                style={{
-                  color: accentColor,
-                  textDecoration: "none",
-                  fontWeight: "500",
-                  transition: "color 0.2s ease",
-                  "&:hover": {
-                    textDecoration: "underline",
-                  },
-                }}
-              >
-                Forgot your password?
-              </a>
-            </p> */}
           </div>
         </div>
 
@@ -820,11 +815,35 @@ const handleSubmit = async (e) => {
           </div>
 
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "20px 30px", marginBottom: "30px" }}>
-            <FooterLink label="Privacy Policy" path="/privacy-policy" accentColor={accentColor} mutedTextColor={mutedTextColor} />
-            <FooterLink label="Terms of Service" path="/terms-of-service" accentColor={accentColor} mutedTextColor={mutedTextColor} />
-            {/* REMOVED: Affiliate link */}
-            {/* <FooterLink label="Affiliate Program" path="/affiliate" accentColor={accentColor} mutedTextColor={mutedTextColor} /> */}
-            <FooterLink label="Support" path="/support" accentColor={accentColor} mutedTextColor={mutedTextColor} />
+            {/* FIX: Point directly to .html files */}
+            <a
+              href="/privacy.html"
+              style={{
+                textDecoration: "none",
+                color: mutedTextColor,
+                fontSize: "0.9rem",
+                transition: "color 0.2s ease",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.color = accentColor)}
+              onMouseOut={(e) => (e.currentTarget.style.color = mutedTextColor)}
+            >
+              Privacy Policy
+            </a>
+            <a
+              href="/terms.html"
+              style={{
+                textDecoration: "none",
+                color: mutedTextColor,
+                fontSize: "0.9rem",
+                transition: "color 0.2s ease",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.color = accentColor)}
+              onMouseOut={(e) => (e.currentTarget.style.color = mutedTextColor)}
+            >
+              Terms of Service
+            </a>
+            {/* Removed: Affiliate Program link */}
+            {/* Removed: Support link */}
           </div>
 
           <p>&copy; {new Date().getFullYear()} Pulse CRM. All rights reserved.</p>
