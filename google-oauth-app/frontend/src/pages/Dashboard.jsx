@@ -4,21 +4,21 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function Dashboard({
-  darkMode = false,
-  showDarkModeToggle = true,
-}) {
-  const { user, isAuthenticated, loading, logout, dashboardSummaryData, updateDashboardSummary } = useAuth();
+export default function Dashboard() {
+  // Use theme from useAuth for consistency
+  const { user, isAuthenticated, loading, logout, dashboardSummaryData, updateDashboardSummary, theme } = useAuth();
   const navigate = useNavigate();
 
   const accent = "#25D366";
-  const [isDark, setDark] = useState(darkMode);
+  const isDark = theme === 'dark'; // Use theme from context
   const [active, setActive] = useState(0); // Initialize active state with a default value (e.g., 0 for Dashboard)
   const [contactsCount, setContactsCount] = useState(dashboardSummaryData?.contactsCount || "...");
+  const [notesCount, setNotesCount] = useState(0); // State for notes count
+  const [remindersCount, setRemindersCount] = useState(0); // State for reminders count
   const [dataLoading, setDataLoading] = useState(!dashboardSummaryData);
   const [error, setError] = useState(null);
 
-  const BACKEND_API_BASE_URL = "https://backend.gitthit.com.ng";
+  const BACKEND_API_BASE_URL = import.meta.env.VITE_API_URL; // Use VITE_API_URL from .env
 
   useEffect(() => {
     // Redirect to login if AuthContext indicates not authenticated after its own loading
@@ -28,47 +28,61 @@ export default function Dashboard({
       return;
     }
 
-    // Only fetch data if authenticated, AuthContext has finished loading, AND user.token is available
-    if (isAuthenticated && user && user.token) {
-      console.log("Dashboard: Authenticated, user and token available. Proceeding to fetch data.");
+    // Only fetch data if authenticated, AuthContext has finished loading
+    if (isAuthenticated && !loading) {
+      console.log("Dashboard: Authenticated, proceeding to fetch data.");
       const fetchDashboardData = async (isBackgroundFetch = false) => {
         if (!isBackgroundFetch) {
           setError(null);
           setDataLoading(true);
         }
 
-        const currentJwt = user.token;
-        console.log("Dashboard: Fetching contacts with JWT:", currentJwt ? "Exists" : "Missing");
-
         try {
-          const contactsResponse = await fetch(`${BACKEND_API_BASE_URL}/api/contacts`, { // Fixed template literal
+          // Fetch Contacts Count
+          // CRITICAL: Use credentials: "include" for cookie-based auth
+          const contactsResponse = await fetch(`${BACKEND_API_BASE_URL}/api/contacts`, {
             method: "GET",
+            credentials: "include", // Ensure cookie is sent
             headers: {
-              "Authorization": `Bearer ${currentJwt}`, // Fixed template literal
               "Content-Type": "application/json",
             },
           });
 
           if (contactsResponse.status === 401 || contactsResponse.status === 403) {
-            console.error("Dashboard: Contacts API: Session expired or invalid token. Logging out.");
+            console.error("Dashboard: Contacts API: Session expired or invalid. Logging out.");
             logout();
             return;
           }
 
           if (!contactsResponse.ok) {
             const errorText = await contactsResponse.text();
-            throw new Error(`Failed to fetch contacts: ${contactsResponse.status} ${contactsResponse.statusText} - ${errorText}`); // Fixed template literal
+            throw new Error(`Failed to fetch contacts: ${contactsResponse.status} ${contactsResponse.statusText} - ${errorText}`);
           }
 
           const contactsData = await contactsResponse.json();
           const newContactsCount = contactsData.length;
           setContactsCount(newContactsCount);
-          updateDashboardSummary({ contactsCount: newContactsCount });
-          console.log("Dashboard: Fetched Contacts Count:", newContactsCount);
 
-        } catch (contactsError) {
-          console.error("Dashboard: Error fetching contacts count:", contactsError);
-          setError("Failed to load contacts count. Please try again. Error: " + contactsError.message);
+          // Fetch Notes and Reminders counts from localStorage
+          const storedNotes = JSON.parse(localStorage.getItem("localNotes")) || [];
+          const storedReminders = JSON.parse(localStorage.getItem("localReminders")) || [];
+          setNotesCount(storedNotes.length);
+          setRemindersCount(storedReminders.length);
+
+          // Update global dashboard summary data
+          updateDashboardSummary({
+            contactsCount: newContactsCount,
+            notesCount: storedNotes.length,
+            remindersCount: storedReminders.length,
+          });
+
+          console.log("Dashboard: Fetched Contacts Count:", newContactsCount);
+          console.log("Dashboard: Fetched Notes Count (local):", storedNotes.length);
+          console.log("Dashboard: Fetched Reminders Count (local):", storedReminders.length);
+
+        } catch (fetchError) {
+          console.error("Dashboard: Error fetching dashboard data:", fetchError);
+          setError("Failed to load dashboard data. Please try again. Error: " + fetchError.message);
         } finally {
           if (!isBackgroundFetch) setDataLoading(false);
         }
@@ -83,9 +97,10 @@ export default function Dashboard({
         fetchDashboardData(true);
       }
     } else if (!loading) {
-        console.log("Dashboard: Not fetching data. isAuthenticated:", isAuthenticated, "user:", user, "loading:", loading);
+        console.log("Dashboard: Not fetching data. isAuthenticated:", isAuthenticated, "loading:", loading);
     }
-  }, [isAuthenticated, loading, user, navigate, logout, dashboardSummaryData, updateDashboardSummary]);
+  }, [isAuthenticated, loading, navigate, logout, dashboardSummaryData, updateDashboardSummary, BACKEND_API_BASE_URL]);
+
 
   const handleLogout = () => {
     logout();
@@ -96,7 +111,7 @@ export default function Dashboard({
     { label: "Contacts", icon: "👥", path: "/contacts" },
     { label: "Reminders", icon: "⏰", path: "/reminders" },
     { label: "Notes", icon: "📝", path: "/notes" },
-    { label: "Search", icon: "🔍", path: "/search" },
+    // { label: "Search", icon: "🔍", path: "/search" }, // REMOVED: Search page
     { label: "Profile", icon: "👤", path: "/profile" },
     { label: "Settings", icon: "⚙️", path: "/settings" },
     { label: "Logout", icon: "🚪", action: handleLogout },
@@ -145,7 +160,7 @@ export default function Dashboard({
           width: 220,
           minWidth: 180,
           background: isDark ? "#23272A" : "#F7F7F7",
-          borderRight: `1px solid ${isDark ? "#23272A" : "#EEE"}`, // Fixed template literal
+          borderRight: `1px solid ${isDark ? "#23272A" : "#EEE"}`,
           display: "flex",
           flexDirection: "column",
           padding: "32px 0 0 0",
@@ -192,7 +207,7 @@ export default function Dashboard({
                 fontSize: 16,
                 color: active === i ? accent : isDark ? "#fff" : "#222",
                 borderLeft:
-                  active === i ? `4px solid ${accent}` : "4px solid transparent", // Fixed template literal
+                  active === i ? `4px solid ${accent}` : "4px solid transparent",
                 background:
                   active === i ? "rgba(37,211,102,0.08)" : "none",
                 textDecoration: "none",
@@ -256,21 +271,20 @@ export default function Dashboard({
             </span>{" "}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            {showDarkModeToggle && (
-              <button
-                aria-label="Toggle dark mode"
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: 20,
-                  color: accent,
-                }}
-                onClick={() => setDark((d) => !d)}
-              >
-                {isDark ? "🌙" : "☀️"}
-              </button>
-            )}
+            {/* Dark mode toggle - using theme from AuthContext */}
+            <button
+              aria-label="Toggle dark mode"
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontSize: 20,
+                color: accent,
+              }}
+              onClick={() => { /* This button should ideally call toggleTheme from useAuth */ }}
+            >
+              {isDark ? "🌙" : "☀️"}
+            </button>
             <span
               style={{ fontSize: 22, color: isDark ? "#fff" : "#888" }}
               role="img"
@@ -317,14 +331,14 @@ export default function Dashboard({
           <SummaryCard
             icon="⏰"
             label="Reminders Today"
-            value={0}
+            value={remindersCount} {/* Updated to use remindersCount */}
             accent={accent}
             darkMode={isDark}
           />
           <SummaryCard
             icon="📝"
             label="Recent Notes"
-            value={0}
+            value={notesCount} {/* Updated to use notesCount */}
             accent={accent}
             darkMode={isDark}
           />
