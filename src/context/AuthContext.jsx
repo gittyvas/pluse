@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
   const location = useLocation();
   const initialUrlParamsProcessed = useRef(false);
 
-  // 🌓 Theme Handling
+  // 🌓 Theme
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("theme", theme);
@@ -37,9 +37,9 @@ export const AuthProvider = ({ children }) => {
         method: "POST",
         credentials: "include"
       });
-      console.log("AuthContext: Backend logout endpoint hit successfully.");
+      console.log("AuthContext: Backend logout hit.");
     } catch (error) {
-      console.error("AuthContext: Error calling backend logout:", error);
+      console.error("AuthContext: Logout failed:", error);
     }
 
     setIsAuthenticated(false);
@@ -51,11 +51,11 @@ export const AuthProvider = ({ children }) => {
     navigate("/login", { replace: true });
   }, [navigate]);
 
-  // 🧠 Fetch user from backend using HTTP-only cookie
+  // 🧠 Fetch user from backend
   const fetchUserData = useCallback(async () => {
     try {
       setLoading(true);
-      console.log("AuthContext: Attempting to fetch user data from backend via cookie...");
+      console.log("AuthContext: Fetching user via cookie...");
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
         method: "GET",
@@ -63,20 +63,22 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.ok) {
-        const userData = await response.json(); // ✅ Full user object returned from backend
+        const data = await response.json();
+
+        // 🛑 FIXED: `data.user`, not `data`
         setIsAuthenticated(true);
-        setUser(userData); // ✅ Corrected here
-        console.log("AuthContext: User data fetched. User:", userData.email);
+        setUser(data.user);
+        console.log("AuthContext: User fetched:", data.user?.email);
       } else if (response.status === 401 || response.status === 403) {
         console.warn("AuthContext: Unauthorized. Logging out.");
         logout();
       } else {
-        console.error("AuthContext: Unknown error fetching user data:", response.status);
+        console.error("AuthContext: Unknown error:", response.status);
         setIsAuthenticated(false);
         setUser(null);
       }
     } catch (error) {
-      console.error("AuthContext: Network error fetching user data:", error);
+      console.error("AuthContext: Network error:", error);
       setIsAuthenticated(false);
       setUser(null);
     } finally {
@@ -84,26 +86,23 @@ export const AuthProvider = ({ children }) => {
     }
   }, [logout]);
 
-  // 🌐 React to route changes and load state
+  // 🌐 On route change
   useEffect(() => {
-    console.log("AuthContext: useEffect triggered. Location:", location.pathname, "Search:", location.search);
-    console.log("AuthContext: initialUrlParamsProcessed.current =", initialUrlParamsProcessed.current);
+    console.log("AuthContext: useEffect. Location:", location.pathname);
 
     if (location.search && !initialUrlParamsProcessed.current) {
       const params = new URLSearchParams(location.search);
-      const urlError = params.get("error");
+      const error = params.get("error");
 
-      if (urlError) {
-        console.error("AuthContext: OAuth error from URL:", urlError);
+      if (error) {
+        console.error("AuthContext: OAuth error:", error);
         logout();
         setLoading(false);
       }
 
       const cleanPath = location.pathname.replace(/\/+$/, "");
       if (location.search) {
-        console.log("AuthContext: Cleaning URL to", cleanPath);
         navigate(cleanPath, { replace: true });
-        setLoading(true);
         initialUrlParamsProcessed.current = true;
         return;
       }
@@ -111,26 +110,30 @@ export const AuthProvider = ({ children }) => {
       initialUrlParamsProcessed.current = true;
     }
 
-    const isPublicRoute = location.pathname === "/" || location.pathname === "/login" || location.pathname === "/home";
+    const publicRoutes = ["/", "/login", "/home"];
+    const isPublicRoute = publicRoutes.includes(location.pathname);
 
     if (!isAuthenticated && !isPublicRoute) {
-      console.log("AuthContext: Not authenticated. Attempting to fetch user.");
       fetchUserData();
     } else if (isPublicRoute && !isAuthenticated) {
       setLoading(false);
-      console.log("AuthContext: On public route and not authenticated. Skipping automatic fetch.");
+      console.log("AuthContext: Public route. Skipping fetch.");
     } else {
       setLoading(false);
-      console.log("AuthContext: Already authenticated or on public route. Skipping.");
     }
-  }, [location.search, location.pathname, navigate, logout, isAuthenticated, fetchUserData]);
+  }, [location, isAuthenticated, logout, fetchUserData, navigate]);
 
   useEffect(() => {
-    console.log("AuthContext Current State: isAuthenticated =", isAuthenticated, "user =", user?.email, "loading =", loading, "dashboardSummaryData =", dashboardSummaryData);
+    console.log("AuthContext State:", {
+      isAuthenticated,
+      user: user?.email,
+      loading,
+      dashboardSummaryData
+    });
   }, [isAuthenticated, user, loading, dashboardSummaryData]);
 
   const updateDashboardSummary = useCallback((data) => {
-    console.log("AuthContext: Updating dashboard summary data:", data);
+    console.log("AuthContext: Updating dashboard summary.");
     setDashboardSummaryData(data);
     localStorage.setItem("dashboardSummaryData", JSON.stringify(data));
   }, []);
@@ -146,13 +149,18 @@ export const AuthProvider = ({ children }) => {
     toggleTheme
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
+
