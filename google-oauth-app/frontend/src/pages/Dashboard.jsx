@@ -1,34 +1,40 @@
 // google-oauth-app/frontend/src/pages/Dashboard.jsx
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function Dashboard() {
-  // Use theme from useAuth for consistency
   const { user, isAuthenticated, loading, logout, dashboardSummaryData, updateDashboardSummary, theme } = useAuth();
   const navigate = useNavigate();
 
   const accent = "#25D366";
-  const isDark = theme === 'dark'; // Use theme from context
-  const [active, setActive] = useState(0); // Initialize active state with a default value (e.g., 0 for Dashboard)
+  const isDark = theme === 'dark';
+  const [active, setActive] = useState(0);
   const [contactsCount, setContactsCount] = useState(dashboardSummaryData?.contactsCount || "...");
-  const [notesCount, setNotesCount] = useState(0); // State for notes count
-  const [remindersCount, setRemindersCount] = useState(0); // State for reminders count
+  const [notesCount, setNotesCount] = useState(0);
+  const [remindersCount, setRemindersCount] = useState(0);
   const [dataLoading, setDataLoading] = useState(!dashboardSummaryData);
   const [error, setError] = useState(null);
 
-  const BACKEND_API_BASE_URL = import.meta.env.VITE_API_URL; // Use VITE_API_URL from .env
+  const BACKEND_API_BASE_URL = import.meta.env.VITE_API_URL;
+
+  // Function to update local notes/reminders counts from localStorage
+  const updateLocalCounts = useCallback(() => {
+    const storedNotes = JSON.parse(localStorage.getItem("localNotes")) || [];
+    const storedReminders = JSON.parse(localStorage.getItem("localReminders")) || [];
+    setNotesCount(storedNotes.length);
+    setRemindersCount(storedReminders.length);
+    console.log("Dashboard: Updated local notes/reminders counts from localStorage.");
+  }, []);
 
   useEffect(() => {
-    // Redirect to login if AuthContext indicates not authenticated after its own loading
     if (!loading && !isAuthenticated) {
       console.log("Dashboard: Not authenticated after AuthContext loading. Redirecting to login.");
       navigate("/login", { replace: true });
       return;
     }
 
-    // Only fetch data if authenticated, AuthContext has finished loading
     if (isAuthenticated && !loading) {
       console.log("Dashboard: Authenticated, proceeding to fetch data.");
       const fetchDashboardData = async (isBackgroundFetch = false) => {
@@ -39,10 +45,9 @@ export default function Dashboard() {
 
         try {
           // Fetch Contacts Count
-          // CRITICAL: Use credentials: "include" for cookie-based auth
           const contactsResponse = await fetch(`${BACKEND_API_BASE_URL}/api/contacts`, {
             method: "GET",
-            credentials: "include", // Ensure cookie is sent
+            credentials: "include",
             headers: {
               "Content-Type": "application/json",
             },
@@ -63,22 +68,15 @@ export default function Dashboard() {
           const newContactsCount = contactsData.length;
           setContactsCount(newContactsCount);
 
-          // Fetch Notes and Reminders counts from localStorage
-          const storedNotes = JSON.parse(localStorage.getItem("localNotes")) || [];
-          const storedReminders = JSON.parse(localStorage.getItem("localReminders")) || [];
-          setNotesCount(storedNotes.length);
-          setRemindersCount(storedReminders.length);
+          // Update local counts immediately after fetching contacts
+          updateLocalCounts(); // Call the new function here
 
-          // Update global dashboard summary data
           updateDashboardSummary({
             contactsCount: newContactsCount,
-            notesCount: storedNotes.length,
-            remindersCount: storedReminders.length,
+            // notesCount and remindersCount will be updated by updateLocalCounts
           });
 
           console.log("Dashboard: Fetched Contacts Count:", newContactsCount);
-          console.log("Dashboard: Fetched Notes Count (local):", storedNotes.length);
-          console.log("Dashboard: Fetched Reminders Count (local):", storedReminders.length);
 
         } catch (fetchError) {
           console.error("Dashboard: Error fetching dashboard data:", fetchError);
@@ -93,13 +91,30 @@ export default function Dashboard() {
         fetchDashboardData(false);
       } else {
         console.log("Dashboard: Using cached data. Performing background refresh.");
-        setDataLoading(false); // Hide loading immediately if cached data is present
+        setDataLoading(false);
         fetchDashboardData(true);
       }
     } else if (!loading) {
         console.log("Dashboard: Not fetching data. isAuthenticated:", isAuthenticated, "loading:", loading);
     }
-  }, [isAuthenticated, loading, navigate, logout, dashboardSummaryData, updateDashboardSummary, BACKEND_API_BASE_URL]);
+  }, [isAuthenticated, loading, navigate, logout, dashboardSummaryData, updateDashboardSummary, BACKEND_API_BASE_URL, updateLocalCounts]);
+
+  // Effect to update local counts whenever localStorage might change (e.g., from other pages)
+  // This is a simple way; for more robust updates, consider a custom event listener
+  useEffect(() => {
+    const handleStorageChange = (event) => {
+      // Only react to changes in 'localNotes' or 'localReminders'
+      if (event.key === 'localNotes' || event.key === 'localReminders') {
+        updateLocalCounts();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    // Initial load of local counts
+    updateLocalCounts();
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [updateLocalCounts]);
 
 
   const handleLogout = () => {
@@ -111,7 +126,7 @@ export default function Dashboard() {
     { label: "Contacts", icon: "👥", path: "/contacts" },
     { label: "Reminders", icon: "⏰", path: "/reminders" },
     { label: "Notes", icon: "📝", path: "/notes" },
-    // { label: "Search", icon: "🔍", path: "/search" }, // REMOVED: Search page
+    // { label: "Search", icon: "🔍", path: "/search" }, // CONFIRMED REMOVED
     { label: "Profile", icon: "👤", path: "/profile" },
     { label: "Settings", icon: "⚙️", path: "/settings" },
     { label: "Logout", icon: "🚪", action: handleLogout },
@@ -331,14 +346,14 @@ export default function Dashboard() {
           <SummaryCard
             icon="⏰"
             label="Reminders Today"
-            value={remindersCount} {/* Updated to use remindersCount */}
+            value={remindersCount}
             accent={accent}
             darkMode={isDark}
           />
           <SummaryCard
             icon="📝"
             label="Recent Notes"
-            value={notesCount} {/* Updated to use notesCount */}
+            value={notesCount}
             accent={accent}
             darkMode={isDark}
           />
