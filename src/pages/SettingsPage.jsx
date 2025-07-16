@@ -1,158 +1,306 @@
-import React, { useState, useEffect } from "react";
+// frontend/src/pages/SettingsPage.jsx
+
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "../components/ui/button";
 import { useAuth } from "../context/AuthContext";
-import { auth, db } from "../lib/firebase"; // Corrected import path for firebase.js
-import { deleteUser } from "firebase/auth"; // Keep this for the deleteUser function
-import { doc, deleteDoc } from "firebase/firestore"; // Import Firestore functions
 
-const SettingsPage = () => {
+// Reusable Confirmation Modal Component (copied from NotesPage/RemindersPage)
+const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText, cancelText, accentColor, cardBgColor, textColor, mutedTextColor, cardBorderColor }) => {
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      width: "100%",
+      height: "100%",
+      background: "rgba(0,0,0,0.6)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+    }}>
+      <div style={{
+        background: cardBgColor,
+        padding: "30px",
+        borderRadius: "15px",
+        boxShadow: "0 5px 20px rgba(0,0,0,0.2)",
+        maxWidth: "450px",
+        textAlign: "center",
+        border: `1px solid ${cardBorderColor}`,
+      }}>
+        <p style={{ fontSize: "1.2rem", color: textColor, marginBottom: "20px" }}>
+          {message}
+        </p>
+        <div style={{ display: "flex", justifyContent: "center", gap: "15px" }}>
+          <button
+            onClick={onConfirm}
+            style={{
+              padding: "10px 20px",
+              fontSize: "1rem",
+              fontWeight: "bold",
+              background: accentColor,
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              "&:hover": { background: accentColor === "#DC3545" ? "#C82333" : "#43A047" },
+            }}
+          >
+            {confirmText}
+          </button>
+          <button
+            onClick={onCancel}
+            style={{
+              padding: "10px 20px",
+              fontSize: "1rem",
+              fontWeight: "bold",
+              background: mutedTextColor,
+              color: textColor,
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              "&:hover": { background: "#808080" },
+            }}
+          >
+            {cancelText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+export default function SettingsPage() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, logout } = useAuth();
-  const [error, setError] = useState(null);
+  const { isAuthenticated, loading, logout, theme, toggleTheme } = useAuth();
+
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Firebase App ID (from AuthContext or global window)
-  const appId = typeof window.__app_id !== 'undefined' ? window.____app_id : 'default-app-id'; // Corrected __app_id access
+  // Define colors based on theme
+  const bgColor = theme === 'dark' ? "#1A222A" : "#F8FBF8";
+  const textColor = theme === 'dark' ? "#E0E6EB" : "#303030";
+  const accentColor = "#4CAF50"; // Soft green accent
+  const cardBgColor = theme === 'dark' ? "linear-gradient(145deg, #2A343D, #1F2830)" : "linear-gradient(145deg, #FFFFFF, #F0F5F0)";
+  const cardBorderColor = theme === 'dark' ? "#3A454F" : "#E0E5E0";
+  const mutedTextColor = theme === 'dark' ? "#A0A8B0" : "#606060";
 
-  // Removed: States to hold Firebase instances (firebaseAuth, firestoreDb)
-  // Removed: useEffect to initialize Firebase instances, as auth and db are now imported directly
+  const BACKEND_API_BASE_URL = import.meta.env.VITE_API_URL;
 
-  const handleDeleteAccount = async () => {
-    // Use the imported 'auth' and 'db' directly
-    if (!auth || !db || !user || !user.userId) {
-      setError("Firebase or user data not ready for deletion.");
-      return;
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      navigate("/login", { replace: true });
     }
+  }, [isAuthenticated, loading, navigate]);
 
-    setShowDeleteConfirm(false); // Hide confirmation modal
+  const handleDeleteAccountConfirmed = useCallback(async () => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setShowDeleteConfirmModal(false); // Close modal immediately
 
     try {
-      // 1. Delete user data from Firestore
-      const userDocRef = doc(db, `artifacts/${appId}/users/${user.userId}`);
-      await deleteDoc(userDocRef);
-      console.log(`SettingsPage: Deleted user data from Firestore for ID: ${user.userId}`);
+      console.log("SettingsPage: Attempting to delete account via backend.");
+      const response = await fetch(`${BACKEND_API_BASE_URL}/api/user/delete`, {
+        method: "DELETE",
+        credentials: "include", // Crucial for sending HTTP-only cookies
+      });
 
-      // 2. Delete contacts data from Firestore (if a separate collection exists)
-      const contactsCollectionRef = window.firebase.firestore.collection(db, `artifacts/${appId}/users/${user.userId}/contacts`);
-      const contactsSnapshot = await window.firebase.firestore.getDocs(contactsCollectionRef);
-      const deleteContactsPromises = contactsSnapshot.docs.map(d => deleteDoc(d.ref));
-      await Promise.all(deleteContactsPromises);
-      console.log(`SettingsPage: Deleted ${contactsSnapshot.size} contacts from Firestore for user: ${user.userId}`);
-
-      // 3. Delete pinned contacts data from Firestore (if a separate collection exists)
-      const pinnedContactsCollectionRef = window.firebase.firestore.collection(db, `artifacts/${appId}/users/${user.userId}/pinnedContacts`);
-      const pinnedContactsSnapshot = await window.firebase.firestore.getDocs(pinnedContactsCollectionRef);
-      const deletePinnedContactsPromises = pinnedContactsSnapshot.docs.map(d => deleteDoc(d.ref));
-      await Promise.all(deletePinnedContactsPromises);
-      console.log(`SettingsPage: Deleted ${pinnedContactsSnapshot.size} pinned contacts from Firestore for user: ${user.userId}`);
-
-
-      // 4. Delete the user from Firebase Authentication
-      // Get the current Firebase Auth user
-      const currentUser = auth.currentUser; // Use the imported 'auth'
-      if (currentUser && currentUser.uid === user.userId) {
-        await deleteUser(currentUser);
-        console.log(`SettingsPage: Deleted user from Firebase Auth: ${user.userId}`);
-        setSuccessMessage("Account and all associated data deleted successfully. Logging out...");
-        setTimeout(logout, 2000); // Logout after a short delay
+      if (response.ok) {
+        setSuccessMessage("Account deleted successfully. Redirecting to login...");
+        console.log("SettingsPage: Account deleted successfully.");
+        // Clear all local storage related to the user and then logout
+        localStorage.clear(); // Clear all local storage
+        logout(); // This will also navigate to /login
+      } else if (response.status === 401 || response.status === 403) {
+        setErrorMessage("Authentication required to delete account. Please log in again.");
+        console.error("SettingsPage: Unauthorized to delete account.");
+        logout();
       } else {
-        setError("No authenticated Firebase user found or mismatch. Please log in again.");
-        logout(); // Force logout if auth state is problematic
+        const errorData = await response.json();
+        setErrorMessage(errorData.message || "Failed to delete account. Please try again.");
+        console.error("SettingsPage: Backend error deleting account:", errorData);
       }
-
-    } catch (err) {
-      console.error("SettingsPage: Error deleting account:", err);
-      // Firebase Auth errors can include 'auth/requires-recent-login'
-      if (err.code === 'auth/requires-recent-login') {
-        setError("For security, please log in again to delete your account.");
-        logout(); // Force logout so user can re-authenticate
-      } else {
-        setError("Failed to delete account. Please try again. Error: " + err.message);
-      }
+    } catch (error) {
+      setErrorMessage("Network error or unexpected issue. Please try again.");
+      console.error("SettingsPage: Error during account deletion:", error);
     }
-  };
+  }, [BACKEND_API_BASE_URL, logout]);
+
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: bgColor, color: textColor }}>
+        <p>Loading authentication...</p>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "red", color: "white" }}>
         <p>Access Denied. Redirecting to login...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-8 bg-gray-900 text-white min-h-screen">
-      <h1 className="text-3xl font-bold mb-6 text-green-400">Settings</h1>
+    <div style={{ background: bgColor, color: textColor, minHeight: "100vh", padding: "32px", fontFamily: "Inter, sans-serif" }}>
+      <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "30px", color: accentColor }}>Settings</h1>
 
       <button
         onClick={() => navigate("/dashboard")}
-        className="mb-6 px-4 py-2 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition-colors"
+        style={{
+          marginBottom: "20px",
+          padding: "10px 20px",
+          background: mutedTextColor,
+          color: textColor,
+          border: "none",
+          borderRadius: "8px",
+          cursor: "pointer",
+          transition: "background 0.2s",
+        }}
+        onMouseOver={(e) => (e.currentTarget.style.background = theme === 'dark' ? "#555" : "#CCC")}
+        onMouseOut={(e) => (e.currentTarget.style.background = mutedTextColor)}
       >
         ← Back to Dashboard
       </button>
 
-      {error && (
-        <div className="bg-red-800 text-white p-3 rounded-md mb-4">
-          {error}
+      {errorMessage && (
+        <div style={{ color: "white", backgroundColor: "#DC3545", padding: "10px", borderRadius: "8px", marginBottom: "20px" }}>
+          {errorMessage}
         </div>
       )}
       {successMessage && (
-        <div className="bg-green-800 text-white p-3 rounded-md mb-4">
+        <div style={{ color: "white", backgroundColor: "#28A745", padding: "10px", borderRadius: "8px", marginBottom: "20px" }}>
           {successMessage}
         </div>
       )}
 
-      <Card className="bg-gray-800 border border-gray-700 text-white p-6 rounded-lg shadow-lg max-w-lg mx-auto">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold mb-4">Account Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4">
-            Here you can manage your account settings. Be careful with actions like deleting your account, as this cannot be undone.
-          </p>
+      <div style={{
+        background: cardBgColor,
+        padding: "30px",
+        borderRadius: "15px",
+        boxShadow: "0 5px 20px rgba(0,0,0,0.1)",
+        maxWidth: "600px",
+        margin: "30px auto",
+        border: `1px solid ${cardBorderColor}`,
+      }}>
+        <h2 style={{ color: accentColor, marginBottom: "20px" }}>Appearance</h2>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+          <span style={{ fontSize: "1.1rem", color: textColor }}>Dark Mode</span>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={theme === 'dark'}
+              onChange={toggleTheme}
+            />
+            <span className="slider round"></span>
+          </label>
+        </div>
+        {/* Add more settings here */}
+        <h2 style={{ color: accentColor, marginTop: "40px", marginBottom: "20px" }}>Account Management</h2>
+        <p style={{ color: mutedTextColor, marginBottom: "20px" }}>
+          Here you can manage your account settings. Be careful with actions like deleting your account, as this cannot be undone.
+        </p>
 
-          <h3 className="text-lg font-semibold mb-2 text-red-400">Delete Account</h3>
-          <p className="mb-4">
-            Permanently delete your Pulse CRM account and all associated data. This action is irreversible.
-          </p>
-          <Button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition-colors"
-          >
-            Delete My Account
-          </Button>
+        <h3 style={{ color: "#DC3545", marginBottom: "10px" }}>Delete Account</h3>
+        <p style={{ color: mutedTextColor, marginBottom: "20px" }}>
+          Permanently delete your Pulse CRM account and all associated data. This action is irreversible.
+        </p>
+        <button
+          onClick={() => setShowDeleteConfirmModal(true)}
+          style={{
+            padding: "12px 25px",
+            background: "#DC3545", // Red for delete button
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            transition: "background 0.2s",
+            boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+          }}
+          onMouseOver={(e) => (e.currentTarget.style.background = "#C82333")}
+          onMouseOut={(e) => (e.currentTarget.style.background = "#DC3545")}
+        >
+          Delete My Account
+        </button>
+      </div>
 
-          {showDeleteConfirm && (
-            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-              <div className="bg-gray-800 p-6 rounded-lg shadow-xl text-center max-w-sm w-full">
-                <p className="text-lg font-semibold mb-4">Are you absolutely sure?</p>
-                <p className="mb-6 text-gray-300">
-                  This action cannot be undone. This will permanently delete your account and all your data.
-                </p>
-                <div className="flex justify-center gap-4">
-                  <Button
-                    onClick={() => setShowDeleteConfirm(false)}
-                    className="bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded-md"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleDeleteAccount}
-                    className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md"
-                  >
-                    Confirm Delete
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmModal && (
+        <ConfirmationModal
+          message="Are you absolutely sure you want to delete your account? This will permanently remove all your data and cannot be undone."
+          onConfirm={handleDeleteAccountConfirmed}
+          onCancel={() => setShowDeleteConfirmModal(false)}
+          confirmText="Yes, Delete My Account"
+          cancelText="Cancel"
+          accentColor="#DC3545" // Red for confirm button
+          cardBgColor={cardBgColor}
+          textColor={textColor}
+          mutedTextColor={mutedTextColor}
+          cardBorderColor={cardBorderColor}
+        />
+      )}
+
+      {/* Basic CSS for the toggle switch (add this to your main CSS file or a style tag) */}
+      <style>
+        {`
+        .switch {
+          position: relative;
+          display: inline-block;
+          width: 60px;
+          height: 34px;
+        }
+
+        .switch input {
+          opacity: 0;
+          width: 0;
+          height: 0;
+        }
+
+        .slider {
+          position: absolute;
+          cursor: pointer;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: ${theme === 'dark' ? '#555' : '#ccc'};
+          -webkit-transition: .4s;
+          transition: .4s;
+          border-radius: 34px;
+        }
+
+        .slider:before {
+          position: absolute;
+          content: "";
+          height: 26px;
+          width: 26px;
+          left: 4px;
+          bottom: 4px;
+          background-color: white;
+          -webkit-transition: .4s;
+          transition: .4s;
+          border-radius: 50%;
+        }
+
+        input:checked + .slider {
+          background-color: ${accentColor};
+        }
+
+        input:focus + .slider {
+          box-shadow: 0 0 1px ${accentColor};
+        }
+
+        input:checked + .slider:before {
+          -webkit-transform: translateX(26px);
+          -ms-transform: translateX(26px);
+          transform: translateX(26px);
+        }
+        `}
+      </style>
     </div>
   );
-};
-
-export default SettingsPage;
+}
