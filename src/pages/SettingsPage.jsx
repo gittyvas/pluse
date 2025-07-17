@@ -1,32 +1,9 @@
-// google-oauth-app/frontend/src/pages/ProfilePage.jsx
+// google-oauth-app/frontend/src/pages/SettingsPage.jsx
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAuth } from "../context/AuthContext";
-
-// Reusable FooterLink Component (kept for consistency if used elsewhere, though not in this specific file's render)
-const FooterLink = ({ label, path }) => {
-  const textColor = "var(--muted-foreground)";
-  const accentColor = "#4CAF50"; // Soft green accent
-
-  return (
-    <a
-      href={path}
-      style={{
-        textDecoration: "none",
-        color: textColor,
-        fontSize: "0.9rem",
-        transition: "color 0.2s ease",
-        "&:hover": {
-          color: accentColor,
-        },
-      }}
-    >
-      {label}
-    </a>
-  );
-};
 
 // Reusable Confirmation Modal Component
 const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText, cancelText, accentColor, cardBgColor, textColor, mutedTextColor, cardBorderColor }) => {
@@ -42,7 +19,7 @@ const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText, cancelTe
       alignItems: "center",
       justifyContent: "center",
       zIndex: 1000,
-    }} onClick={onCancel}> {/* Allow clicking outside to close */}
+    }} onClick={onCancel}> {/* Allows clicking outside the modal to close it */}
       <div style={{
         background: cardBgColor,
         padding: "30px",
@@ -51,7 +28,7 @@ const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText, cancelTe
         maxWidth: "450px",
         textAlign: "center",
         border: `1px solid ${cardBorderColor}`,
-      }} onClick={(e) => e.stopPropagation()}> {/* Prevent clicks inside from closing */}
+      }} onClick={(e) => e.stopPropagation()}> {/* Prevents clicks inside the modal from closing it */}
         <p style={{ fontSize: "1.2rem", color: textColor, marginBottom: "20px" }}>
           {message}
         </p>
@@ -97,24 +74,13 @@ const ConfirmationModal = ({ message, onConfirm, onCancel, confirmText, cancelTe
 };
 
 
-export default function ProfilePage() {
+export default function SettingsPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, loading, logout, theme, toggleTheme } = useAuth(); // Include theme and toggleTheme
-
-  // State for fetched profile data
-  const [profile, setProfile] = useState(null);
-
-  // State for notifications
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(false);
-  const [notificationMessage, setNotificationMessage] = useState(null); // For notification feedback
+  const { isAuthenticated, loading, logout, theme, toggleTheme } = useAuth();
 
   // State for modals
-  const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  // State for general error messages (e.g., failed to fetch profile)
-  const [error, setError] = useState(null);
+  const [notificationMessage, setNotificationMessage] = useState(null); // For feedback messages
 
   // Define backend base URL from environment variable
   const API_URL = import.meta.env.VITE_API_URL;
@@ -137,64 +103,6 @@ export default function ProfilePage() {
     }
   }, [isAuthenticated, loading, navigate]);
 
-  // Fetch user profile data from backend
-  const fetchProfile = useCallback(async () => {
-    if (!isAuthenticated || !API_URL) {
-      console.warn("ProfilePage: Not authenticated or API_URL missing. Skipping profile fetch.");
-      return;
-    }
-    setError(null); // Clear previous errors
-    setNotificationMessage(null); // Clear notification messages on fetch
-
-    try {
-      const res = await axios.get(`${API_URL}/api/user/profile`, {
-        withCredentials: true, // Ensures HTTP-only cookie is sent
-      });
-      const data = res.data;
-
-      // FIX: Revert to data.user assuming backend returns { user: { ... } }
-      setProfile(data.user);
-      setEmailNotifications(data.user.emailNotifications ?? true); // Access from data.user
-      setPushNotifications(data.user.pushNotifications ?? false); // Access from data.user
-
-    } catch (err) {
-      console.error("ProfilePage: Failed to fetch profile:", err);
-      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-        console.error("ProfilePage: API: Session expired or invalid. Logging out.");
-        logout();
-      } else {
-        setError("Failed to load profile. Please try again.");
-      }
-    }
-  }, [isAuthenticated, API_URL, logout]);
-
-  useEffect(() => {
-    if (isAuthenticated && !loading) {
-      fetchProfile();
-    }
-  }, [isAuthenticated, loading, fetchProfile]);
-
-
-  // Handle Disconnect Google Account
-  const handleDisconnectGoogle = async () => {
-    setShowDisconnectModal(false); // Close modal
-    setNotificationMessage(null); // Clear any previous notification messages
-
-    try {
-      const res = await axios.post(`${API_URL}/api/user/disconnect`, {}, { // Corrected endpoint to /api/user/disconnect
-        withCredentials: true,
-      });
-      if (res.status === 200) {
-        setNotificationMessage({ type: 'success', text: "Google account disconnected. Logging out for full effect." });
-        setTimeout(() => logout(), 2000); // Log out after a short delay
-      } else {
-        setNotificationMessage({ type: 'error', text: res.data.error || "Failed to disconnect Google account." });
-      }
-    } catch (err) {
-      console.error("Network error while disconnecting:", err);
-      setNotificationMessage({ type: 'error', text: err.response?.data?.error || "Network error while disconnecting." });
-    }
-  };
 
   // Handle Delete Account
   const handleDeleteAccount = async () => {
@@ -202,7 +110,7 @@ export default function ProfilePage() {
     setNotificationMessage(null); // Clear any previous notification messages
 
     try {
-      const res = await axios.delete(`${API_URL}/api/user/account`, { // Corrected endpoint to /api/user/account
+      const res = await axios.delete(`${API_URL}/api/user/account`, {
         withCredentials: true,
       });
       if (res.status === 200) {
@@ -213,30 +121,10 @@ export default function ProfilePage() {
       }
     } catch (err) {
       console.error("Network error while deleting account:", err);
-      setNotificationMessage({ type: 'error', text: err.response?.data?.error || "Failed to delete account." });
+      setNotificationMessage({ type: 'error', text: err.response?.data?.error || "Network error while deleting account." });
     }
   };
 
-  // Handle Notification Update
-  const handleNotificationUpdate = async () => {
-    setNotificationMessage(null); // Clear previous messages
-    try {
-      const res = await axios.post(`${API_URL}/api/user/notifications`, { // Corrected endpoint to /api/user/notifications
-        emailNotifications,
-        pushNotifications,
-      }, {
-        withCredentials: true,
-      });
-      if (res.status === 200) {
-        setNotificationMessage({ type: 'success', text: "Notification settings updated." });
-      } else {
-        setNotificationMessage({ type: 'error', text: res.data.error || "Failed to update notification settings." });
-      }
-    } catch (err) {
-      console.error("Error updating notifications:", err);
-      setNotificationMessage({ type: 'error', text: err.response?.data?.error || "Failed to update notification settings." });
-    }
-  };
 
   if (loading) {
     return (
@@ -256,7 +144,7 @@ export default function ProfilePage() {
 
   return (
     <div style={{ background: bgColor, color: textColor, minHeight: "100vh", fontFamily: "Inter, sans-serif", overflowX: "hidden" }}>
-      {/* Top Navigation Bar (consistent with Home.jsx) */}
+      {/* Top Navigation Bar */}
       <header
         style={{
           width: "100%",
@@ -341,7 +229,7 @@ export default function ProfilePage() {
         </nav>
       </header>
 
-      {/* Profile Content Section */}
+      {/* Main Content Section - Only Delete Account */}
       <section
         style={{
           padding: "60px 20px",
@@ -358,24 +246,8 @@ export default function ProfilePage() {
           gap: "30px",
         }}
       >
-        <h2 style={{ fontSize: "2.8rem", fontWeight: "bold", color: accentColor }}>Your Profile</h2>
+        <h2 style={{ fontSize: "2.8rem", fontWeight: "bold", color: accentColor }}>Account Settings</h2>
 
-        {error && (
-          <div style={{
-            padding: "10px",
-            borderRadius: "8px",
-            background: "#F8D7DA",
-            color: "#721C24",
-            border: `1px solid #F5C6CB`,
-            marginBottom: "15px",
-            fontSize: "0.9rem",
-            textAlign: "center",
-            width: "100%",
-            maxWidth: "600px"
-          }}>
-            {error}
-          </div>
-        )}
         {notificationMessage && (
           <div style={{
             padding: "10px",
@@ -393,52 +265,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* User Identification & Basic Info */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "15px", width: "100%" }}>
-          {profile?.profile_picture_url ? (
-            <img
-              src={profile.profile_picture_url}
-              alt={`${profile.name}'s profile`}
-              style={{
-                width: "140px",
-                height: "140px",
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: `5px solid ${accentColor}`,
-                boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
-              }}
-              onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/140x140/4CAF50/FFFFFF?text=👤"; }}
-            />
-          ) : (
-            <div style={{
-              width: "140px",
-              height: "140px",
-              borderRadius: "50%",
-              background: accentColor,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "70px", // Larger font for initial
-              color: "#fff",
-              border: `5px solid ${accentColor}`,
-              boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
-            }}>
-              {profile?.name ? profile.name.charAt(0).toUpperCase() : 'U'}
-            </div>
-          )}
-          <p style={{ fontSize: "1rem", color: mutedTextColor, marginBottom: "-5px" }}>Logged in as:</p>
-          <h3 style={{ fontSize: "2.2rem", fontWeight: "bold", color: textColor }}>
-            {profile?.name || "Loading Name..."}
-          </h3>
-          <p style={{ fontSize: "1.2rem", color: mutedTextColor, marginTop: "5px" }}>
-            {profile?.email || "Loading Email..."}
-          </p>
-          <p style={{ fontSize: "0.9rem", color: mutedTextColor, maxWidth: "600px", lineHeight: "1.5", marginTop: "15px" }}>
-            This is your Pluse CRM profile. Here you can manage your account settings and preferences.
-          </p>
-        </div>
-
-        {/* Notification Preferences */}
+        {/* Delete Account */}
         <div style={{
           width: "100%",
           display: "flex",
@@ -448,97 +275,7 @@ export default function ProfilePage() {
           padding: "0 20px",
           textAlign: "left",
         }}>
-          <h3 style={{ fontSize: "1.8rem", fontWeight: "bold", color: accentColor, marginBottom: "10px" }}>Notification Preferences</h3>
-          <div style={{
-            background: theme === 'dark' ? "#1F2830" : "#F0F5F0",
-            padding: "25px",
-            borderRadius: "15px",
-            border: `1px solid ${cardBorderColor}`,
-            boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "15px",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <input
-                type="checkbox"
-                id="emailNotifications"
-                checked={emailNotifications}
-                onChange={(e) => setEmailNotifications(e.target.checked)}
-                style={{ transform: "scale(1.2)" }}
-              />
-              <label htmlFor="emailNotifications" style={{ fontSize: "1rem", color: textColor }}>Email Notifications</label>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <input
-                type="checkbox"
-                id="pushNotifications"
-                checked={pushNotifications}
-                onChange={(e) => setPushNotifications(e.target.checked)}
-                style={{ transform: "scale(1.2)" }}
-              />
-              <label htmlFor="pushNotifications" style={{ fontSize: "1rem", color: textColor }}>Push Notifications</label>
-            </div>
-            <button
-              onClick={handleNotificationUpdate}
-              style={{
-                padding: "10px 20px",
-                fontSize: "0.9rem",
-                fontWeight: "bold",
-                background: accentColor,
-                color: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                transition: "background 0.3s ease",
-                marginTop: "15px",
-                "&:hover": { background: "#43A047" },
-              }}
-            >
-              Update Notifications
-            </button>
-          </div>
-        </div>
-
-        {/* Session Management (Placeholder for now) */}
-        <div style={{
-          width: "100%",
-          display: "flex",
-          flexDirection: "column",
-          gap: "20px",
-          marginTop: "30px",
-          padding: "0 20px",
-          textAlign: "left",
-        }}>
-          <h3 style={{ fontSize: "1.8rem", fontWeight: "bold", color: accentColor, marginBottom: "10px" }}>Active Sessions</h3>
-          <div style={{
-            background: theme === 'dark' ? "#1F2830" : "#F0F5F0",
-            padding: "25px",
-            borderRadius: "15px",
-            border: `1px solid ${cardBorderColor}`,
-            boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "10px",
-          }}>
-            <p style={{ fontSize: "1rem", color: mutedTextColor, textAlign: "center" }}>
-              Session management is not yet implemented in this version.
-            </p>
-          </div>
-        </div>
-
-        {/* Google Account Connection & Delete Account */}
-        <div style={{
-          width: "100%",
-          display: "flex",
-          flexDirection: "column",
-          gap: "20px",
-          marginTop: "30px",
-          padding: "0 20px",
-        }}>
-          <h3 style={{ fontSize: "1.8rem", fontWeight: "bold", color: accentColor, marginBottom: "10px" }}>Account Integrations & Data</h3>
-
-          {/* Google Account Connection */}
+          <h3 style={{ fontSize: "1.8rem", fontWeight: "bold", color: textColor, marginBottom: "10px" }}>Delete Account</h3>
           <div style={{
             background: theme === 'dark' ? "#1F2830" : "#F0F5F0",
             padding: "25px",
@@ -547,44 +284,6 @@ export default function ProfilePage() {
             textAlign: "left",
             boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
           }}>
-            <h4 style={{ fontSize: "1.4rem", fontWeight: "bold", color: textColor, marginBottom: "10px" }}>Google Account Connection</h4>
-            <p style={{ fontSize: "1rem", color: mutedTextColor, marginBottom: "20px" }}>
-              Pluse CRM accesses your Google Contacts to display them in real-time. We **do not store** your Google Contacts data on our servers.
-              Your privacy is paramount.
-            </p>
-            <button
-              onClick={() => setShowDisconnectModal(true)}
-              style={{
-                padding: "12px 25px",
-                fontSize: "1rem",
-                fontWeight: "bold",
-                background: "#FF6347", // Tomato red for disconnect
-                color: "#fff",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                transition: "background 0.3s ease, transform 0.2s ease",
-                boxShadow: "0 4px 12px rgba(255, 99, 71, 0.3)",
-                "&:hover": {
-                  background: "#E5533D",
-                  transform: "translateY(-1px)",
-                },
-              }}
-            >
-              Disconnect Google Account
-            </button>
-          </div>
-
-          {/* Delete Account */}
-          <div style={{
-            background: theme === 'dark' ? "#1F2830" : "#F0F5F0",
-            padding: "25px",
-            borderRadius: "15px",
-            border: `1px solid ${cardBorderColor}`,
-            textAlign: "left",
-            boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-          }}>
-            <h4 style={{ fontSize: "1.4rem", fontWeight: "bold", color: textColor, marginBottom: "10px" }}>Delete Account</h4>
             <p style={{ fontSize: "1rem", color: mutedTextColor, marginBottom: "20px" }}>
               Permanently delete your Pluse CRM account and all associated data. This action cannot be undone.
             </p>
@@ -611,40 +310,6 @@ export default function ProfilePage() {
             </button>
           </div>
         </div>
-
-        {/* Privacy & Terms Links */}
-        <div style={{ marginTop: "40px", display: "flex", gap: "25px", flexWrap: "wrap", justifyContent: "center" }}>
-          <a
-            href="/privacy.html"
-            style={{
-              color: accentColor,
-              textDecoration: "none",
-              fontSize: "1rem",
-              fontWeight: "500",
-              transition: "color 0.2s ease",
-              "&:hover": {
-                textDecoration: "underline",
-              },
-            }}
-          >
-            Privacy Policy
-          </a>
-          <a
-            href="/terms.html"
-            style={{
-              color: accentColor,
-              textDecoration: "none",
-              fontSize: "1rem",
-              fontWeight: "500",
-              transition: "color 0.2s ease",
-              "&:hover": {
-                textDecoration: "underline",
-              },
-            }}
-          >
-            Terms of Service
-          </a>
-        </div>
       </section>
 
       {/* Footer (consistent with Home.jsx) */}
@@ -670,29 +335,10 @@ export default function ProfilePage() {
         <p style={{ margin: 0, fontSize: "0.9rem" }}>
           &copy; {new Date().getFullYear()} Pluse CRM. All rights reserved.
         </p>
-        {/* Removed: About Us, Support, Contact links as requested */}
         <div style={{ display: "flex", gap: "20px" }}>
-          {/* <FooterLink label="About Us" path="/about" /> */}
-          {/* <FooterLink label="Support" path="/support" /> */}
-          {/* <FooterLink label="Contact" path="/contact" /> */}
+          {/* Removed: About Us, Support, Contact links */}
         </div>
       </footer>
-
-      {/* Disconnect Google Modal */}
-      {showDisconnectModal && (
-        <ConfirmationModal
-          message="Are you sure you want to disconnect your Google account? This will prevent Pluse CRM from accessing your Google Contacts."
-          onConfirm={handleDisconnectGoogle}
-          onCancel={() => setShowDisconnectModal(false)}
-          confirmText="Yes, Disconnect"
-          cancelText="Cancel"
-          accentColor="#FF6347" // Tomato red for disconnect
-          cardBgColor={cardBgColor}
-          textColor={textColor}
-          mutedTextColor={mutedTextColor}
-          cardBorderColor={cardBorderColor}
-        />
-      )}
 
       {/* Delete Account Modal */}
       {showDeleteModal && (
