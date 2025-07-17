@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pluse CRM</title> <!-- Changed from Pulse CRM to Pluse CRM -->
-    <!-- Tailwind CSS CDN -->
+    <title>Pluse CRM</title>
+    <!-- Tailwind CSS (UnoCSS) -->
     <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime"></script>
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -13,12 +13,28 @@
       body {
         font-family: 'Inter', sans-serif;
       }
+      .static-content {
+        text-align: center;
+        padding: 2rem;
+      }
+      .static-content a {
+        color: blue;
+        text-decoration: underline;
+      }
     </style>
   </head>
   <body>
+    <!-- ✅ Google bot will see this -->
+    <div class="static-content">
+      <h1>Welcome to Pluse CRM</h1>
+      <p>Your intelligent customer relationship manager.</p>
+      <p><a href="/privacy.html">Privacy Policy</a> | <a href="/terms.html">Terms of Service</a></p>
+    </div>
+
+    <!-- React App Mount Point -->
     <div id="root"></div>
+
     <script type="module" src="/src/main.jsx"></script>
-    <!-- FileSaver.js for robust file downloads -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   </body>
 </html>
