@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useInView } from 'react-intersection-observer';
-
 // Reusable NavLink Component for Header
 const NavLink = ({ label, navigate, path, textColor, accentColor }) => {
   const handleClick = (e) => {
@@ -19,7 +18,6 @@ const NavLink = ({ label, navigate, path, textColor, accentColor }) => {
       navigate(path);
     }
   };
-
   return (
     <a
       href={path}
@@ -87,13 +85,11 @@ const SectionWithAnimation = ({ id, theme, accentColor, sectionBgColor, sectionB
     triggerOnce: true,
     threshold: 0.1,
   });
-
   const animationStyle = {
     opacity: inView ? 1 : 0,
     transform: inView ? 'translateY(0)' : 'translateY(20px)',
     transition: 'opacity 0.6s ease-out, transform 0.6s ease-out',
   };
-
   return (
     <section
       id={id}
@@ -195,31 +191,23 @@ export default function Home() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [formMessage, setFormMessage] = useState(null);
-
   // State for typing animation
   const headlineText = "Stay closer to the people who matter.";
   const [displayedHeadline, setDisplayedHeadline] = useState("");
   const [showCursor, setShowCursor] = useState(true);
-
   useEffect(() => {
-    let i = 0;
-    const typingInterval = setInterval(() => {
-      if (i < headlineText.length) {
-        setDisplayedHeadline((prev) => prev + headlineText.charAt(i));
-        i++;
-      } else {
-        clearInterval(typingInterval);
-        // Start cursor blinking after typing is complete
-        setInterval(() => {
-          setShowCursor((prev) => !prev);
-        }, 500); // Blinks every 500ms
+    let index = 0;
+    const interval = setInterval(() => {
+      setDisplayedHeadline(headlineText.slice(0, index + 1));
+      index++;
+      if (index === headlineText.length) {
+        clearInterval(interval);
       }
-    }, 70); // Typing speed (milliseconds per character)
+    }, 100); // Typing speed (ms)
 
-    return () => {
-      clearInterval(typingInterval);
-    };
-  }, []); // Run once on component mount
+    return () => clearInterval(interval);
+  }, []);
+  // Run once on component mount
 
   // Define colors for "Soft & Gradient" style
   const bgColor = theme === 'dark' ? "#1A222A" : "#F8FBF8"; // Soft dark blue-grey / very light green-tinted white
@@ -230,18 +218,14 @@ export default function Home() {
   const mutedTextColor = theme === 'dark' ? "#A0A8B0" : "#606060";
   const headerBgColor = theme === 'dark' ? "#1A222A" : "#FFFFFF";
   const headerBorderColor = theme === 'dark' ? "#3A454F" : "#E8EBE8";
-
-
   const handleSignInSignUp = () => {
     if (isAuthenticated) navigate("/dashboard");
     else navigate("/login");
   };
-
   const handleChange = (e) => {
     setContactForm({ ...contactForm, [e.target.name]: e.target.value });
   };
-
-const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
   e.preventDefault();
   setSending(true);
   setFormMessage(null);
@@ -252,7 +236,6 @@ const handleSubmit = async (e) => {
       credentials: 'include', // in case you're using cookies/session
       body: JSON.stringify(contactForm),
     });
-
     if (!response.ok) {
       throw new Error("Failed to send message");
     }
@@ -441,7 +424,8 @@ const handleSubmit = async (e) => {
               },
             }}
           >
-            Organize your network, remember special moments, and never forget to follow up. Pluse CRM syncs with your Google Contacts to help you manage relationships effortlessly.
+            Organize your network, remember special moments, and never forget to follow up.
+            Pluse CRM syncs with your Google Contacts to help you manage relationships effortlessly.
           </p>
 
           {/* CTA Button and small text */}
