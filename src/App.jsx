@@ -5,7 +5,6 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Home from "./pages/Home";
-import About from "./pages/About";
 import ContactsPage from "./pages/ContactsPage";
 import RemindersPage from "./pages/RemindersPage";
 import NotesPage from "./pages/NotesPage";
