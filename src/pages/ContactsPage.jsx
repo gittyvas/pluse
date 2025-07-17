@@ -21,7 +21,7 @@ export default function ContactsPage() {
 
 
   const [contacts, setContacts] = useState([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true); // Renamed from 'loading' to avoid conflict with auth loading
   const [error, setError] = useState(null);
   const [selectedContact, setSelectedContact] = useState(null); // For modal
   const [showContactDetailsModal, setShowContactDetailsModal] = useState(false);
@@ -30,7 +30,7 @@ export default function ContactsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Infinite scroll states
-  const [offset, setOffset] = useState(0);
+  const [offset, setOffset] = useState(0); // Renamed from nextPageToken for clarity with offset-based pagination
   const [hasMore, setHasMore] = useState(true); // Indicates if there are more contacts to load
   const LIMIT = 50; // Number of contacts to fetch per request
 
@@ -58,18 +58,18 @@ export default function ContactsPage() {
   const BACKEND_API_BASE_URL = import.meta.env.VITE_API_URL;
 
   // --- Fetch Google Contacts from Backend with Pagination ---
-  const fetchContacts = useCallback(async (currentOffset, currentLimit) => {
-    if (!isAuthenticated || loading) {
-      console.log("ContactsPage: Not authenticated or auth still loading. Skipping contacts fetch.");
-      setDataLoading(false);
+  const fetchContacts = useCallback(async () => { // Removed offset, limit params from here, they are from state
+    if (!isAuthenticated || loading || !hasMore || dataLoading) { // Added checks for hasMore and dataLoading
+      console.log("ContactsPage: Conditions not met for fetching contacts (auth, loading, hasMore, dataLoading). Skipping.");
+      setDataLoading(false); // Ensure dataLoading is false if we skip
       return;
     }
 
     setError(null);
     setDataLoading(true);
     try {
-      console.log(`ContactsPage: Attempting to fetch contacts from backend with offset ${currentOffset} and limit ${currentLimit}.`);
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/contacts?limit=${currentLimit}&offset=${currentOffset}`, {
+      console.log(`ContactsPage: Attempting to fetch contacts from backend with offset ${offset} and limit ${LIMIT}.`);
+      const response = await fetch(`${BACKEND_API_BASE_URL}/api/contacts?limit=${LIMIT}&offset=${offset}`, {
         method: "GET",
         credentials: 'include',
         headers: {
@@ -111,7 +111,7 @@ export default function ContactsPage() {
         };
       }).filter(contact => contact.name !== "No Name" || contact.email !== "No Email");
 
-      // For infinite scroll, append new contacts
+      // Append new contacts
       setContacts((prevContacts) => {
         // Filter out duplicates based on ID before appending
         const newUniqueContacts = processedContacts.filter(
@@ -121,8 +121,8 @@ export default function ContactsPage() {
       });
 
       // Update hasMore based on whether new contacts were received
-      setHasMore(processedContacts.length === currentLimit);
-      console.log(`ContactsPage: Displaying ${processedContacts.length} new contacts, total ${contacts.length + processedContacts.length}. Has more: ${processedContacts.length === currentLimit}`);
+      setHasMore(processedContacts.length === LIMIT); // Use LIMIT, not currentLimit as it's a constant
+      console.log(`ContactsPage: Displayed ${processedContacts.length} new contacts, total ${contacts.length + processedContacts.length}. Has more: ${processedContacts.length === LIMIT}`);
 
     } catch (err) {
       console.error("ContactsPage: Error fetching contacts:", err);
@@ -131,29 +131,29 @@ export default function ContactsPage() {
     } finally {
       setDataLoading(false);
     }
-  }, [isAuthenticated, loading, logout, BACKEND_API_BASE_URL, contacts.length]); // Added contacts.length to dependency array to re-evaluate after contacts update
+  }, [isAuthenticated, loading, logout, BACKEND_API_BASE_URL, offset, hasMore, dataLoading]); // Added offset, hasMore, dataLoading to dependencies
 
-
-  // Initial load effect
+  // --- Initial Load useEffect (Fix 1) ---
   useEffect(() => {
-    if (!loading && isAuthenticated && contacts.length === 0 && hasMore) {
-      fetchContacts(offset, LIMIT);
+    // Only fetch if authenticated, not already loading, and we potentially have more data
+    if (!loading && isAuthenticated && hasMore) {
+      fetchContacts();
     }
-  }, [isAuthenticated, loading, fetchContacts, offset, hasMore, contacts.length]); // Added offset, hasMore, contacts.length
+  }, [isAuthenticated, loading, hasMore, fetchContacts]); // Added hasMore as a dependency
 
-
-  // Infinite scroll logic (load more contacts when scrolling near bottom)
+  // --- Infinite Scroll Listener (Fix 2) ---
   useEffect(() => {
     const handleScroll = () => {
-      // Check if user has scrolled to the bottom of the page (with a 200px buffer)
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200 && hasMore && !dataLoading) {
+      // Check if user has scrolled to the bottom of the page (with a 300px buffer)
+      // and if there are more contacts to load, and not currently loading data
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 300 && hasMore && !dataLoading) {
         setOffset((prev) => prev + LIMIT); // Increment offset to fetch next batch
       }
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasMore, dataLoading, LIMIT]); // Added dataLoading to prevent multiple fetches while one is in progress
+  }, [hasMore, dataLoading, LIMIT]); // Dependencies ensure the listener is updated if these change
 
 
   // --- Filter contacts based on search query ---
