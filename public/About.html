@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pluse CRM - Google OAuth2 Homepage</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Inter font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        /* Custom styles for dark theme to match the image */
+        .dark-bg {
+            background-color: #1A222A; /* Dark background from your React theme */
+        }
+        .text-light {
+            color: #E0E6EB; /* Light text color from your React theme */
+        }
+        .text-muted {
+            color: #A0A8B0; /* Muted text color from your React theme */
+        }
+        .text-accent {
+            color: #4CAF50; /* Accent color from your React theme */
+        }
+        .section-bg {
+            background: linear-gradient(145deg, #2A343D, #1F2830); /* Section background from your React theme */
+            border: 1px solid #3A454F; /* Section border from your React theme */
+        }
+    </style>
+</head>
+<body class="dark-bg text-light min-h-screen flex flex-col items-center py-10 px-4">
+
+    <div class="max-w-4xl w-full mx-auto">
+        <!-- Header Section -->
+        <header class="flex justify-between items-center mb-10 px-4">
+            <div class="flex items-center space-x-3">
+                <!-- Updated src to point to your logo in the public folder -->
+                <img src="/logo.png" alt="Pluse CRM Logo" class="rounded-full shadow-lg w-10 h-10">
+                <span class="text-2xl font-bold text-accent">Pluse CRM</span>
+            </div>
+            <a href="#" class="text-muted text-lg font-medium hover:text-accent transition-colors duration-200">Lets Connect</a>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="bg-gray-800 p-8 md:p-12 rounded-xl shadow-2xl section-bg">
+            <h1 class="text-4xl font-bold text-center mb-10 text-accent">Google OAuth2 Homepage</h1>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4 text-light">Accurately represents your app's identity</h2>
+                <p class="text-muted leading-relaxed mb-4">
+                    Pluse CRM is a personal CRM designed to help you nurture your relationships, remember important details, and stay connected with the people who matter most. It's a web-based application providing intuitive tools for managing your personal and professional network.
+                </p>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4 text-light">What will this app do with user data?</h2>
+                <p class="text-muted leading-relaxed mb-4">
+                    Pluse CRM requests read-only access to your Google Contacts (<code>contacts.readonly</code>) and "Other contacts" (<code>contacts.other.readonly</code>). This data is used solely to **display your complete contact list** (including explicitly saved contacts and "Other contacts" from Gmail interactions) within your Pluse CRM dashboard.
+                </p>
+                <p class="text-muted leading-relaxed mb-4">
+                    **Crucially, Pluse CRM does NOT store or retain any of your Google Contacts data (names, emails, phone numbers, etc.) on its servers.** All contact data is fetched in real-time from Google's API directly within your browser session.
+                </p>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4 text-light">How does this app enhance user functionality?</h2>
+                <p class="text-muted leading-relaxed mb-4">
+                    By displaying your Google Contacts, Pluse CRM allows you to centralize your relationship management. You can add your own private notes, reminders, and interaction logs linked to these contacts. This enhances functionality by providing a comprehensive personal CRM experience without compromising your privacy, as only your self-generated content is stored securely on our servers, linked via the Google Contact ID.
+                </p>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4 text-light">Link to Privacy Policy: <a href="https://pluse.gitthit.com.ng/privacy.html" class="text-accent hover:underline transition-colors duration-200">Click here</a></h2>
+                <p class="text-muted leading-relaxed mb-4">
+                    Pluse CRM is a web-based application accessible via modern browsers. Its core functionality revolves around providing a secure and efficient platform for personal relationship management.
+                </p>
+            </section>
+
+            <section class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4 text-light">Google OAuth2 Limited Use Disclosure</h2>
+                <p class="text-muted leading-relaxed mb-4">
+                    This app uses Google user data obtained from restricted scopes (<code>contacts.readonly</code>, <code>contacts.other.readonly</code>) only to provide user-facing features that are clearly described in our privacy policy and consent screen. We adhere strictly to Google API Services User Data Policy, including the Limited Use requirements. We do not transfer or sell user data.
+                </p>
+            </section>
+
+            <section>
+                <h2 class="text-2xl font-semibold mb-4 text-light">Copyright</h2>
+                <p class="text-muted leading-relaxed">
+                    If you have a copyright complaint, please contact us with the alleged content, identification of the work claimed to have been infringed, including your name and a valid email address of the copyright holder/representative, an assertion that the use of the material is not authorized and an assertion that you are the copyright holder/representative.
+                </p>
+                <p class="text-muted leading-relaxed mt-4">
+                    &copy; <span id="current-year"></span> Pluse CRM. All rights reserved.
+                </p>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Set the current year for the copyright notice
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>
