@@ -21,18 +21,13 @@ export default function ContactsPage() {
 
 
   const [contacts, setContacts] = useState([]);
-  const [dataLoading, setDataLoading] = useState(true); // Renamed from 'loading' to avoid conflict with auth loading
+  const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedContact, setSelectedContact] = useState(null); // For modal
   const [showContactDetailsModal, setShowContactDetailsModal] = useState(false);
 
   // New state for search functionality
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Infinite scroll states
-  const [offset, setOffset] = useState(0); // Renamed from nextPageToken for clarity with offset-based pagination
-  const [hasMore, setHasMore] = useState(true); // Indicates if there are more contacts to load
-  const LIMIT = 50; // Number of contacts to fetch per request
 
   // Simulate pin/unpin logic using local state (for now, not persistent)
   const [pinnedIds, setPinnedIds] = useState(() => {
@@ -57,21 +52,22 @@ export default function ContactsPage() {
   // --- CORRECTED: Use environment variable for backend URL ---
   const BACKEND_API_BASE_URL = import.meta.env.VITE_API_URL;
 
-  // --- Fetch Google Contacts from Backend with Pagination ---
-  const fetchContacts = useCallback(async () => { // Removed offset, limit params from here, they are from state
-    if (!isAuthenticated || loading || !hasMore || dataLoading) { // Added checks for hasMore and dataLoading
-      console.log("ContactsPage: Conditions not met for fetching contacts (auth, loading, hasMore, dataLoading). Skipping.");
-      setDataLoading(false); // Ensure dataLoading is false if we skip
+  // --- Fetch Google Contacts from Backend ---
+  const fetchContacts = useCallback(async () => {
+    // Only proceed if authenticated and not currently loading auth state
+    if (!isAuthenticated || loading) {
+      console.log("ContactsPage: Not authenticated or auth still loading. Skipping contacts fetch.");
+      setDataLoading(false);
       return;
     }
 
     setError(null);
     setDataLoading(true);
     try {
-      console.log(`ContactsPage: Attempting to fetch contacts from backend with offset ${offset} and limit ${LIMIT}.`);
-      const response = await fetch(`${BACKEND_API_BASE_URL}/api/contacts?limit=${LIMIT}&offset=${offset}`, {
+      console.log("ContactsPage: Attempting to fetch contacts from backend.");
+      const response = await fetch(`${BACKEND_API_BASE_URL}/api/contacts`, {
         method: "GET",
-        credentials: 'include',
+        credentials: 'include', // Ensures HTTP-only cookie is sent automatically
         headers: {
           "Content-Type": "application/json",
         },
@@ -91,6 +87,7 @@ export default function ContactsPage() {
       const data = await response.json();
       console.log("ContactsPage: Fetched contacts data:", data);
 
+      // Process contacts to extract relevant info and handle missing names/emails
       const processedContacts = data.map(contact => {
         const name = contact.names && contact.names.length > 0 ? contact.names[0].displayName : "No Name";
         const email = contact.emailAddresses && contact.emailAddresses.length > 0 ? contact.emailAddresses[0].value : "No Email";
@@ -101,59 +98,33 @@ export default function ContactsPage() {
           : "N/A";
 
         return {
-          id: contact.resourceName,
+          id: contact.resourceName, // Use resourceName as a unique ID
           name,
           email,
           photo,
           phone,
           lastUpdated,
-          raw: contact
+          raw: contact // Keep raw data for debugging if needed
         };
-      }).filter(contact => contact.name !== "No Name" || contact.email !== "No Email");
+      }).filter(contact => contact.name !== "No Name" || contact.email !== "No Email"); // Filter out contacts with no name or email
 
-      // Append new contacts
-      setContacts((prevContacts) => {
-        // Filter out duplicates based on ID before appending
-        const newUniqueContacts = processedContacts.filter(
-          (newContact) => !prevContacts.some((existingContact) => existingContact.id === newContact.id)
-        );
-        return [...prevContacts, ...newUniqueContacts];
-      });
-
-      // Update hasMore based on whether new contacts were received
-      setHasMore(processedContacts.length === LIMIT); // Use LIMIT, not currentLimit as it's a constant
-      console.log(`ContactsPage: Displayed ${processedContacts.length} new contacts, total ${contacts.length + processedContacts.length}. Has more: ${processedContacts.length === LIMIT}`);
+      setContacts(processedContacts);
+      console.log(`ContactsPage: Displaying ${processedContacts.length} contacts.`);
 
     } catch (err) {
       console.error("ContactsPage: Error fetching contacts:", err);
       setError("Failed to load contacts. Please try again. Error: " + err.message);
-      setHasMore(false); // Stop trying to load more on error
     } finally {
       setDataLoading(false);
     }
-  }, [isAuthenticated, loading, logout, BACKEND_API_BASE_URL, offset, hasMore, dataLoading]); // Added offset, hasMore, dataLoading to dependencies
+  }, [isAuthenticated, loading, logout, BACKEND_API_BASE_URL]);
 
-  // --- Initial Load useEffect (Fix 1) ---
+
   useEffect(() => {
-    // Only fetch if authenticated, not already loading, and we potentially have more data
-    if (!loading && isAuthenticated && hasMore) {
+    if (!loading && isAuthenticated) {
       fetchContacts();
     }
-  }, [isAuthenticated, loading, hasMore, fetchContacts]); // Added hasMore as a dependency
-
-  // --- Infinite Scroll Listener (Fix 2) ---
-  useEffect(() => {
-    const handleScroll = () => {
-      // Check if user has scrolled to the bottom of the page (with a 300px buffer)
-      // and if there are more contacts to load, and not currently loading data
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 300 && hasMore && !dataLoading) {
-        setOffset((prev) => prev + LIMIT); // Increment offset to fetch next batch
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasMore, dataLoading, LIMIT]); // Dependencies ensure the listener is updated if these change
+  }, [isAuthenticated, loading, fetchContacts]);
 
 
   // --- Filter contacts based on search query ---
@@ -195,6 +166,7 @@ export default function ContactsPage() {
       contact.phone,
       contact.lastUpdated
     ]);
+    // Use window.csvStringify if available, otherwise basic string creation
     if (window.csvStringify) {
       return window.csvStringify(rows, { header: true, columns: headers });
     } else {
@@ -216,9 +188,11 @@ export default function ContactsPage() {
       vcard += `TEL;TYPE=cell:${contact.phone}\n`;
     }
     if (contact.photo) {
-      vcard += `PHOTO;VALUE=uri:${contact.photo}\n`;
+        // vCard 3.0 does not directly support image URLs, but some clients might interpret it.
+        // For full compatibility, image would need to be base64 encoded and embedded, which is complex.
+        vcard += `PHOTO;VALUE=uri:${contact.photo}\n`;
     }
-    vcard += `REV:${new Date().toISOString()}\n`;
+    vcard += `REV:${new Date().toISOString()}\n`; // Last revised
     vcard += "END:VCARD\n";
     return vcard;
   };
@@ -233,6 +207,7 @@ export default function ContactsPage() {
     if (window.saveAs) {
       window.saveAs(blob, "google_contacts.csv");
     } else {
+      // Fallback for browsers without FileSaver.js (or if not loaded)
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = "google_contacts.csv";
@@ -293,7 +268,7 @@ export default function ContactsPage() {
         style={{
           marginBottom: "20px",
           padding: "10px 20px",
-          background: mutedTextColor,
+          background: mutedTextColor, // Use mutedTextColor for back button
           color: textColor,
           border: "none",
           borderRadius: "8px",
@@ -321,23 +296,23 @@ export default function ContactsPage() {
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
             width: "100%",
-            maxWidth: "600px",
+            maxWidth: "600px", // Limit width for better aesthetics
             padding: "12px 15px",
             fontSize: "1rem",
             borderRadius: "8px",
-            border: `1px solid ${inputBorderColor}`,
-            background: inputBgColor,
-            color: textColor,
+            border: `1px solid ${inputBorderColor}`, // Use themed border
+            background: inputBgColor, // Use themed background
+            color: textColor, // Use themed text color
             outline: "none",
             boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
             transition: "border-color 0.2s, box-shadow 0.2s",
           }}
           onFocus={(e) => {
-            e.currentTarget.style.borderColor = accentColor;
-            e.currentTarget.style.boxShadow = `0 0 0 3px ${accentColor}40`;
+            e.currentTarget.style.borderColor = accentColor; // Use themed accent
+            e.currentTarget.style.boxShadow = `0 0 0 3px ${accentColor}40`; // Soft glow
           }}
           onBlur={(e) => {
-            e.currentTarget.style.borderColor = inputBorderColor;
+            e.currentTarget.style.borderColor = inputBorderColor; // Use themed border
             e.currentTarget.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
           }}
         />
@@ -349,7 +324,7 @@ export default function ContactsPage() {
           onClick={handleExportCSV}
           style={{
             padding: "10px 20px",
-            background: "#007BFF",
+            background: "#007BFF", // Blue for CSV export
             color: "white",
             border: "none",
             borderRadius: "8px",
@@ -366,7 +341,7 @@ export default function ContactsPage() {
           onClick={handleExportVCard}
           style={{
             padding: "10px 20px",
-            background: "#28A745",
+            background: "#28A745", // Green for vCard export
             color: "white",
             border: "none",
             borderRadius: "8px",
@@ -381,7 +356,7 @@ export default function ContactsPage() {
         </button>
       </div>
 
-      {dataLoading && contacts.length === 0 ? (
+      {dataLoading ? (
         <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center" }}>Loading contacts...</p>
       ) : filteredContacts.length === 0 && searchQuery ? (
         <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center" }}>No contacts match your search query.</p>
@@ -438,12 +413,6 @@ export default function ContactsPage() {
               />
             ))}
           </div>
-          {dataLoading && contacts.length > 0 && (
-            <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center", marginTop: "20px" }}>Loading more contacts...</p>
-          )}
-          {!hasMore && contacts.length > 0 && (
-            <p style={{ fontSize: "1rem", color: mutedTextColor, textAlign: "center", marginTop: "20px" }}>You've reached the end of your contacts list.</p>
-          )}
         </>
       )}
 
@@ -514,7 +483,7 @@ function ContactCard({ contact, accent, accentColor, isPinned, onTogglePin, onCl
           src={contact.photo}
           alt={contact.name}
           style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", border: `2px solid ${accent}` }}
-          onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/80x80/25D366/FFFFFF?text=👤"; }}
+          onError={(e) => { e.target.onerror = null; e.target.src="https://placehold.co/80x80/25D366/FFFFFF?text=👤"; }}
         />
       ) : (
         <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "36px", color: "#fff" }}>
@@ -608,7 +577,7 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
             src={contact.photo}
             alt={contact.name}
             style={{ width: "120px", height: "120px", borderRadius: "50%", objectFit: "cover", border: `3px solid ${accent}`, alignSelf: "center" }}
-            onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/120x120/25D366/FFFFFF?text=👤"; }}
+            onError={(e) => { e.target.onerror = null; e.target.src="https://placehold.co/120x120/25D366/FFFFFF?text=👤"; }}
           />
         ) : (
           <div style={{ width: "120px", height: "120px", borderRadius: "50%", background: accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px", color: "#fff", alignSelf: "center" }}>
@@ -694,10 +663,10 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
                 onMouseOut={(e) => (e.currentTarget.style.background = "#00AFF0")}
               >
                 Skype 📞
-              </a>
+                </a>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Conditional rendering for Email Action */}
         {contact.email && contact.email !== "No Email" && (
