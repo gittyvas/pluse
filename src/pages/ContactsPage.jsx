@@ -21,10 +21,17 @@ export default function ContactsPage() {
 
 
   const [contacts, setContacts] = useState([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  // Changed dataLoading to reflect initial state before fetching
+  const [dataLoading, setDataLoading] = useState(false); // Initially false, as contacts aren't being loaded yet
   const [error, setError] = useState(null);
   const [selectedContact, setSelectedContact] = useState(null); // For modal
   const [showContactDetailsModal, setShowContactDetailsModal] = useState(false);
+
+  // NEW STATE: Control when contacts are fetched
+  const [shouldLoadContacts, setShouldLoadContacts] = useState(false);
+  // NEW STATE: Indicate if contacts have been successfully loaded at least once
+  const [contactsLoadedSuccessfully, setContactsLoadedSuccessfully] = useState(false);
+
 
   // New state for search functionality
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,6 +104,11 @@ export default function ContactsPage() {
           ? contact.metadata.sources[0].updateTime
           : "N/A";
 
+        // Determine source based on metadata (assuming Google Contacts for now)
+        // You might need more sophisticated logic if you have multiple sources
+        const source = contact.metadata && contact.metadata.sources && contact.metadata.sources.some(s => s.type === 'CONTACT' || s.type === 'PROFILE') ? 'Google' : 'Unknown';
+
+
         return {
           id: contact.resourceName, // Use resourceName as a unique ID
           name,
@@ -104,28 +116,38 @@ export default function ContactsPage() {
           photo,
           phone,
           lastUpdated,
+          source, // Add the source property
           raw: contact // Keep raw data for debugging if needed
         };
       }).filter(contact => contact.name !== "No Name" || contact.email !== "No Email"); // Filter out contacts with no name or email
 
       setContacts(processedContacts);
+      setContactsLoadedSuccessfully(true); // Indicate successful loading
       console.log(`ContactsPage: Displaying ${processedContacts.length} contacts.`);
 
     } catch (err) {
       console.error("ContactsPage: Error fetching contacts:", err);
       setError("Failed to load contacts. Please try again. Error: " + err.message);
+      setContactsLoadedSuccessfully(false); // Reset on error
     } finally {
       setDataLoading(false);
     }
   }, [isAuthenticated, loading, logout, BACKEND_API_BASE_URL]);
 
 
+  // Effect to fetch contacts only when `shouldLoadContacts` becomes true
   useEffect(() => {
-    if (!loading && isAuthenticated) {
+    if (shouldLoadContacts && !loading && isAuthenticated) {
       fetchContacts();
     }
-  }, [isAuthenticated, loading, fetchContacts]);
+  }, [shouldLoadContacts, isAuthenticated, loading, fetchContacts]);
 
+
+  // Handler for the "Sync Google Contacts" button
+  const handleSyncGoogleContacts = () => {
+    setShouldLoadContacts(true); // This will trigger the useEffect to fetch contacts
+    setError(null); // Clear any previous errors
+  };
 
   // --- Filter contacts based on search query ---
   const filteredContacts = useMemo(() => {
@@ -159,12 +181,13 @@ export default function ContactsPage() {
 
   // --- Export Functionality ---
   const generateCSV = (contactsToExport) => {
-    const headers = ["Name", "Email", "Phone", "Last Updated"];
+    const headers = ["Name", "Email", "Phone", "Last Updated", "Source"]; // Add Source to headers
     const rows = contactsToExport.map(contact => [
       contact.name,
       contact.email,
       contact.phone,
-      contact.lastUpdated
+      contact.lastUpdated,
+      contact.source // Include source in CSV
     ]);
     // Use window.csvStringify if available, otherwise basic string creation
     if (window.csvStringify) {
@@ -191,6 +214,10 @@ export default function ContactsPage() {
         // vCard 3.0 does not directly support image URLs, but some clients might interpret it.
         // For full compatibility, image would need to be base64 encoded and embedded, which is complex.
         vcard += `PHOTO;VALUE=uri:${contact.photo}\n`;
+    }
+    // Add source if desired in vCard (less standard, but possible as a custom field)
+    if (contact.source) {
+        vcard += `X-SOURCE:${contact.source}\n`;
     }
     vcard += `REV:${new Date().toISOString()}\n`; // Last revised
     vcard += "END:VCARD\n";
@@ -287,134 +314,203 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {/* Search Bar */}
-      <div style={{ marginBottom: "30px", display: "flex", justifyContent: "center" }}>
-        <input
-          type="text"
-          placeholder="Search contacts by name, email, or phone..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            width: "100%",
-            maxWidth: "600px", // Limit width for better aesthetics
-            padding: "12px 15px",
-            fontSize: "1rem",
-            borderRadius: "8px",
-            border: `1px solid ${inputBorderColor}`, // Use themed border
-            background: inputBgColor, // Use themed background
-            color: textColor, // Use themed text color
-            outline: "none",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-            transition: "border-color 0.2s, box-shadow 0.2s",
-          }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = accentColor; // Use themed accent
-            e.currentTarget.style.boxShadow = `0 0 0 3px ${accentColor}40`; // Soft glow
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = inputBorderColor; // Use themed border
-            e.currentTarget.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
-          }}
-        />
-      </div>
-
-      {/* Export Buttons */}
-      <div style={{ marginBottom: "30px", display: "flex", gap: "15px", justifyContent: "flex-end", flexWrap: "wrap" }}>
-        <button
-          onClick={handleExportCSV}
-          style={{
-            padding: "10px 20px",
-            background: "#007BFF", // Blue for CSV export
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            transition: "background 0.2s",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.background = "#0056b3")}
-          onMouseOut={(e) => (e.currentTarget.style.background = "#007BFF")}
-        >
-          Export All to CSV 📤
-        </button>
-        <button
-          onClick={handleExportVCard}
-          style={{
-            padding: "10px 20px",
-            background: "#28A745", // Green for vCard export
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            transition: "background 0.2s",
-            boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.background = "#218838")}
-          onMouseOut={(e) => (e.currentTarget.style.background = "#28A745")}
-        >
-          Export All to vCard 📤
-        </button>
-      </div>
-
-      {dataLoading ? (
-        <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center" }}>Loading contacts...</p>
-      ) : filteredContacts.length === 0 && searchQuery ? (
-        <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center" }}>No contacts match your search query.</p>
-      ) : filteredContacts.length === 0 && !searchQuery ? (
-        <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center" }}>No contacts found or imported from Google.</p>
-      ) : (
-        <>
-          {/* Pinned Contacts Section */}
-          {pinnedContacts.length > 0 && (
-            <div style={{ marginBottom: "40px" }}>
-              <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accentColor }}>
-                Pinned Contacts ⭐
-              </h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
-                {pinnedContacts.map((contact) => (
-                  <ContactCard
-                    key={contact.id}
-                    contact={contact}
-                    accent={accent}
-                    accentColor={accentColor}
-                    isPinned={true}
-                    onTogglePin={togglePinContact}
-                    onClick={() => handleContactClick(contact)}
-                    cardBgColor={cardBgColor}
-                    cardBorderColor={cardBorderColor}
-                    textColor={textColor}
-                    mutedTextColor={mutedTextColor}
-                    theme={theme}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* All Other Contacts Section */}
-          <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accentColor }}>
-            All Contacts
-          </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
-            {unpinnedContacts.map((contact) => (
-              <ContactCard
-                key={contact.id}
-                contact={contact}
-                accent={accent}
-                accentColor={accentColor}
-                isPinned={false}
-                onTogglePin={togglePinContact}
-                onClick={() => handleContactClick(contact)}
-                cardBgColor={cardBgColor}
-                cardBorderColor={cardBorderColor}
-                textColor={textColor}
-                mutedTextColor={mutedTextColor}
-                theme={theme}
-              />
-            ))}
-          </div>
-        </>
+      {/* NEW: Sync Google Contacts Button */}
+      {!shouldLoadContacts && ( // Only show if contacts haven't been triggered to load yet
+        <div style={{ textAlign: "center", margin: "40px 0" }}>
+          <button
+            onClick={handleSyncGoogleContacts}
+            style={{
+              padding: "15px 30px",
+              fontSize: "1.2rem",
+              background: "#4285F4", // Google Blue
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              transition: "background 0.3s ease",
+              boxShadow: "0 4px 10px rgba(0, 0, 0, 0.2)",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              margin: "0 auto" // Center the button
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.background = "#357ae8")}
+            onMouseOut={(e) => (e.currentTarget.style.background = "#4285F4")}
+          >
+            <img src="https://www.google.com/favicon.ico" alt="Google Logo" style={{ width: "24px", height: "24px" }} />
+            Sync Contacts from Google
+          </button>
+          <p style={{ marginTop: "15px", color: mutedTextColor }}>Tap the button above to load your Google Contacts.</p>
+        </div>
       )}
+
+      {/* NEW: "Synced from Google Contacts" Banner - appears after successful load */}
+      {shouldLoadContacts && !dataLoading && contactsLoadedSuccessfully && contacts.length > 0 && (
+        <div style={{
+          backgroundColor: theme === 'dark' ? "#1F3A22" : "#e6f7ff", // Light green for success, light blue for Google sync
+          border: `1px solid ${theme === 'dark' ? "#3A8D40" : "#91d5ff"}`,
+          padding: "15px 20px",
+          marginBottom: "30px",
+          borderRadius: "8px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "1.1em",
+          color: theme === 'dark' ? "#A0D9B1" : "#0056b3",
+          boxShadow: "0 2px 5px rgba(0, 0, 0, 0.05)",
+        }}>
+          <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "10px" }}>
+            <span role="img" aria-label="Cloud Sync" style={{ fontSize: "1.3em" }}>☁️</span>
+            Contacts Synced from Google Contacts
+            <img src="https://www.google.com/favicon.ico" alt="Google" style={{ height: "1.2em", verticalAlign: "middle" }} />
+          </p>
+        </div>
+      )}
+
+
+      {/* Search Bar (conditional rendering based on contacts loaded) */}
+      {shouldLoadContacts && (
+        <div style={{ marginBottom: "30px", display: "flex", justifyContent: "center" }}>
+          <input
+            type="text"
+            placeholder="Search contacts by name, email, or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%",
+              maxWidth: "600px", // Limit width for better aesthetics
+              padding: "12px 15px",
+              fontSize: "1rem",
+              borderRadius: "8px",
+              border: `1px solid ${inputBorderColor}`, // Use themed border
+              background: inputBgColor, // Use themed background
+              color: textColor, // Use themed text color
+              outline: "none",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+              transition: "border-color 0.2s, box-shadow 0.2s",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = accentColor; // Use themed accent
+              e.currentTarget.style.boxShadow = `0 0 0 3px ${accentColor}40`; // Soft glow
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = inputBorderColor; // Use themed border
+              e.currentTarget.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
+            }}
+          />
+        </div>
+      )}
+
+
+      {/* Export Buttons (conditional rendering based on contacts loaded) */}
+      {shouldLoadContacts && contacts.length > 0 && (
+        <div style={{ marginBottom: "30px", display: "flex", gap: "15px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <button
+            onClick={handleExportCSV}
+            style={{
+              padding: "10px 20px",
+              background: "#007BFF", // Blue for CSV export
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              transition: "background 0.2s",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.background = "#0056b3")}
+            onMouseOut={(e) => (e.currentTarget.style.background = "#007BFF")}
+          >
+            Export All to CSV 📤
+          </button>
+          <button
+            onClick={handleExportVCard}
+            style={{
+              padding: "10px 20px",
+              background: "#28A745", // Green for vCard export
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              transition: "background 0.2s",
+              boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.background = "#218838")}
+            onMouseOut={(e) => (e.currentTarget.style.background = "#28A745")}
+          >
+            Export All to vCard 📤
+          </button>
+        </div>
+      )}
+
+      {/* Conditional rendering for contacts list */}
+      {shouldLoadContacts ? ( // Only render this block if the button has been tapped
+        dataLoading ? (
+          <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center" }}>Loading contacts...</p>
+        ) : filteredContacts.length === 0 && searchQuery ? (
+          <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center" }}>No contacts match your search query.</p>
+        ) : filteredContacts.length === 0 && !searchQuery && contactsLoadedSuccessfully ? (
+          <p style={{ fontSize: "1.2rem", color: mutedTextColor, textAlign: "center" }}>No contacts found or imported from Google.</p>
+        ) : (
+          <>
+            {/* Pinned Contacts Section */}
+            {pinnedContacts.length > 0 && (
+              <div style={{ marginBottom: "40px" }}>
+                <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accentColor }}>
+                  Pinned Contacts ⭐
+                </h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
+                  {pinnedContacts.map((contact) => (
+                    <ContactCard
+                      key={contact.id}
+                      contact={contact}
+                      accent={accent}
+                      accentColor={accentColor}
+                      isPinned={true}
+                      onTogglePin={togglePinContact}
+                      onClick={() => handleContactClick(contact)}
+                      cardBgColor={cardBgColor}
+                      cardBorderColor={cardBorderColor}
+                      textColor={textColor}
+                      mutedTextColor={mutedTextColor}
+                      theme={theme}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* All Other Contacts Section */}
+            <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "20px", color: accentColor }}>
+              All Contacts
+            </h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
+              {unpinnedContacts.map((contact) => (
+                <ContactCard
+                  key={contact.id}
+                  contact={contact}
+                  accent={accent}
+                  accentColor={accentColor}
+                  isPinned={false}
+                  onTogglePin={togglePinContact}
+                  onClick={() => handleContactClick(contact)}
+                  cardBgColor={cardBgColor}
+                  cardBorderColor={cardBorderColor}
+                  textColor={textColor}
+                  mutedTextColor={mutedTextColor}
+                  theme={theme}
+                />
+              ))}
+            </div>
+          </>
+        )
+      ) : ( // Render this if shouldLoadContacts is still false (before button tap)
+        <div style={{ textAlign: "center", padding: "50px 0" }}>
+            <p style={{ fontSize: "1.2rem", color: mutedTextColor }}>
+                Tap "Sync Contacts from Google" to load your contacts.
+            </p>
+        </div>
+      )}
+
 
       {/* Contact Details Modal */}
       {showContactDetailsModal && selectedContact && (
@@ -435,6 +531,7 @@ export default function ContactsPage() {
 }
 
 // --- ContactCard Component ---
+// (No changes needed here unless you want to add a visible "Google" label within the card)
 function ContactCard({ contact, accent, accentColor, isPinned, onTogglePin, onClick, cardBgColor, cardBorderColor, textColor, mutedTextColor, theme }) {
   const isDark = theme === 'dark';
   return (
@@ -500,6 +597,29 @@ function ContactCard({ contact, accent, accentColor, isPinned, onTogglePin, onCl
         <p style={{ margin: "0", fontSize: "14px", color: mutedTextColor, textAlign: "center" }}>
           Phone: {contact.phone}
         </p>
+      )}
+
+      {/* NEW: Data Source Label/Tooltip within ContactCard */}
+      {contact.source === 'Google' && (
+        <div
+          title="This contact is synced from Google Contacts" // Tooltip
+          style={{
+            marginTop: "8px", // Space from other info
+            padding: "4px 8px",
+            backgroundColor: theme === 'dark' ? "#2A3A40" : "#E8F0FE", // Light blue/green for Google, theme adapted
+            color: theme === 'dark' ? "#8AB4F8" : "#1A73E8", // Google blue
+            borderRadius: "5px",
+            fontSize: "0.75em",
+            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            border: `1px solid ${theme === 'dark' ? "#3C72B0" : "#AECBFA"}`
+          }}
+        >
+          <img src="https://www.google.com/favicon.ico" alt="Google" style={{ height: "1em" }} />
+          Google
+        </div>
       )}
     </div>
   );
@@ -582,6 +702,29 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
         ) : (
           <div style={{ width: "120px", height: "120px", borderRadius: "50%", background: accent, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px", color: "#fff", alignSelf: "center" }}>
             {contact.name.charAt(0).toUpperCase()}
+          </div>
+        )}
+
+        {/* NEW: Data Source Label/Tooltip in Modal */}
+        {contact.source === 'Google' && (
+          <div
+            title="This contact is synced from Google Contacts" // Tooltip
+            style={{
+              padding: "5px 10px",
+              backgroundColor: theme === 'dark' ? "#2A3A40" : "#E8F0FE",
+              color: theme === 'dark' ? "#8AB4F8" : "#1A73E8",
+              borderRadius: "5px",
+              fontSize: "0.9em",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              justifyContent: "center",
+              border: `1px solid ${theme === 'dark' ? "#3C72B0" : "#AECBFA"}`
+            }}
+          >
+            <img src="https://www.google.com/favicon.ico" alt="Google" style={{ height: "1.2em" }} />
+            Synced from Google Contacts
           </div>
         )}
 
