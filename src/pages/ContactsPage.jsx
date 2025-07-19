@@ -1,5 +1,3 @@
-// google-oauth-app/frontend/src/pages/ContactsPage.jsx
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -19,19 +17,15 @@ export default function ContactsPage() {
   const inputBgColor = theme === 'dark' ? "#2A2E31" : "#EFEFEF"; // Specific for input fields
   const inputBorderColor = theme === 'dark' ? "#444" : "#CCC"; // Specific for input fields
 
-
   const [contacts, setContacts] = useState([]);
-  // Changed dataLoading to reflect initial state before fetching
   const [dataLoading, setDataLoading] = useState(false); // Initially false, as contacts aren't being loaded yet
   const [error, setError] = useState(null);
   const [selectedContact, setSelectedContact] = useState(null); // For modal
   const [showContactDetailsModal, setShowContactDetailsModal] = useState(false);
 
-  // NEW STATE: Control when contacts are fetched
+  // NEW STATES: Control when contacts are fetched and if loaded successfully
   const [shouldLoadContacts, setShouldLoadContacts] = useState(false);
-  // NEW STATE: Indicate if contacts have been successfully loaded at least once
   const [contactsLoadedSuccessfully, setContactsLoadedSuccessfully] = useState(false);
-
 
   // New state for search functionality
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,12 +50,10 @@ export default function ContactsPage() {
     });
   };
 
-  // --- CORRECTED: Use environment variable for backend URL ---
   const BACKEND_API_BASE_URL = import.meta.env.VITE_API_URL;
 
   // --- Fetch Google Contacts from Backend ---
   const fetchContacts = useCallback(async () => {
-    // Only proceed if authenticated and not currently loading auth state
     if (!isAuthenticated || loading) {
       console.log("ContactsPage: Not authenticated or auth still loading. Skipping contacts fetch.");
       setDataLoading(false);
@@ -94,7 +86,6 @@ export default function ContactsPage() {
       const data = await response.json();
       console.log("ContactsPage: Fetched contacts data:", data);
 
-      // Process contacts to extract relevant info and handle missing names/emails
       const processedContacts = data.map(contact => {
         const name = contact.names && contact.names.length > 0 ? contact.names[0].displayName : "No Name";
         const email = contact.emailAddresses && contact.emailAddresses.length > 0 ? contact.emailAddresses[0].value : "No Email";
@@ -105,9 +96,7 @@ export default function ContactsPage() {
           : "N/A";
 
         // Determine source based on metadata (assuming Google Contacts for now)
-        // You might need more sophisticated logic if you have multiple sources
         const source = contact.metadata && contact.metadata.sources && contact.metadata.sources.some(s => s.type === 'CONTACT' || s.type === 'PROFILE') ? 'Google' : 'Unknown';
-
 
         return {
           id: contact.resourceName, // Use resourceName as a unique ID
@@ -117,9 +106,9 @@ export default function ContactsPage() {
           phone,
           lastUpdated,
           source, // Add the source property
-          raw: contact // Keep raw data for debugging if needed
+          raw: contact
         };
-      }).filter(contact => contact.name !== "No Name" || contact.email !== "No Email"); // Filter out contacts with no name or email
+      }).filter(contact => contact.name !== "No Name" || contact.email !== "No Email");
 
       setContacts(processedContacts);
       setContactsLoadedSuccessfully(true); // Indicate successful loading
@@ -152,7 +141,7 @@ export default function ContactsPage() {
   // --- Filter contacts based on search query ---
   const filteredContacts = useMemo(() => {
     if (!searchQuery) {
-      return contacts; // If no search query, return all contacts
+      return contacts;
     }
     const lowerCaseQuery = searchQuery.toLowerCase();
     return contacts.filter(contact =>
@@ -181,15 +170,14 @@ export default function ContactsPage() {
 
   // --- Export Functionality ---
   const generateCSV = (contactsToExport) => {
-    const headers = ["Name", "Email", "Phone", "Last Updated", "Source"]; // Add Source to headers
+    const headers = ["Name", "Email", "Phone", "Last Updated", "Source"];
     const rows = contactsToExport.map(contact => [
       contact.name,
       contact.email,
       contact.phone,
       contact.lastUpdated,
-      contact.source // Include source in CSV
+      contact.source
     ]);
-    // Use window.csvStringify if available, otherwise basic string creation
     if (window.csvStringify) {
       return window.csvStringify(rows, { header: true, columns: headers });
     } else {
@@ -211,15 +199,12 @@ export default function ContactsPage() {
       vcard += `TEL;TYPE=cell:${contact.phone}\n`;
     }
     if (contact.photo) {
-        // vCard 3.0 does not directly support image URLs, but some clients might interpret it.
-        // For full compatibility, image would need to be base64 encoded and embedded, which is complex.
         vcard += `PHOTO;VALUE=uri:${contact.photo}\n`;
     }
-    // Add source if desired in vCard (less standard, but possible as a custom field)
     if (contact.source) {
         vcard += `X-SOURCE:${contact.source}\n`;
     }
-    vcard += `REV:${new Date().toISOString()}\n`; // Last revised
+    vcard += `REV:${new Date().toISOString()}\n`;
     vcard += "END:VCARD\n";
     return vcard;
   };
@@ -234,7 +219,6 @@ export default function ContactsPage() {
     if (window.saveAs) {
       window.saveAs(blob, "google_contacts.csv");
     } else {
-      // Fallback for browsers without FileSaver.js (or if not loaded)
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = "google_contacts.csv";
@@ -295,7 +279,7 @@ export default function ContactsPage() {
         style={{
           marginBottom: "20px",
           padding: "10px 20px",
-          background: mutedTextColor, // Use mutedTextColor for back button
+          background: mutedTextColor,
           color: textColor,
           border: "none",
           borderRadius: "8px",
@@ -314,7 +298,7 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {/* NEW: Sync Google Contacts Button */}
+      {/* Sync Google Contacts Button */}
       {!shouldLoadContacts && ( // Only show if contacts haven't been triggered to load yet
         <div style={{ textAlign: "center", margin: "40px 0" }}>
           <button
@@ -332,7 +316,7 @@ export default function ContactsPage() {
               display: "flex",
               alignItems: "center",
               gap: "10px",
-              margin: "0 auto" // Center the button
+              margin: "0 auto"
             }}
             onMouseOver={(e) => (e.currentTarget.style.background = "#357ae8")}
             onMouseOut={(e) => (e.currentTarget.style.background = "#4285F4")}
@@ -344,10 +328,10 @@ export default function ContactsPage() {
         </div>
       )}
 
-      {/* NEW: "Synced from Google Contacts" Banner - appears after successful load */}
+      {/* "Synced from Google Contacts" Banner - appears after successful load */}
       {shouldLoadContacts && !dataLoading && contactsLoadedSuccessfully && contacts.length > 0 && (
         <div style={{
-          backgroundColor: theme === 'dark' ? "#1F3A22" : "#e6f7ff", // Light green for success, light blue for Google sync
+          backgroundColor: theme === 'dark' ? "#1F3A22" : "#e6f7ff",
           border: `1px solid ${theme === 'dark' ? "#3A8D40" : "#91d5ff"}`,
           padding: "15px 20px",
           marginBottom: "30px",
@@ -378,23 +362,23 @@ export default function ContactsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: "100%",
-              maxWidth: "600px", // Limit width for better aesthetics
+              maxWidth: "600px",
               padding: "12px 15px",
               fontSize: "1rem",
               borderRadius: "8px",
-              border: `1px solid ${inputBorderColor}`, // Use themed border
-              background: inputBgColor, // Use themed background
-              color: textColor, // Use themed text color
+              border: `1px solid ${inputBorderColor}`,
+              background: inputBgColor,
+              color: textColor,
               outline: "none",
               boxShadow: "0 2px 5px rgba(0,0,0,0.2)",
               transition: "border-color 0.2s, box-shadow 0.2s",
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = accentColor; // Use themed accent
-              e.currentTarget.style.boxShadow = `0 0 0 3px ${accentColor}40`; // Soft glow
+              e.currentTarget.style.borderColor = accentColor;
+              e.currentTarget.style.boxShadow = `0 0 0 3px ${accentColor}40`;
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = inputBorderColor; // Use themed border
+              e.currentTarget.style.borderColor = inputBorderColor;
               e.currentTarget.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
             }}
           />
@@ -409,7 +393,7 @@ export default function ContactsPage() {
             onClick={handleExportCSV}
             style={{
               padding: "10px 20px",
-              background: "#007BFF", // Blue for CSV export
+              background: "#007BFF",
               color: "white",
               border: "none",
               borderRadius: "8px",
@@ -426,7 +410,7 @@ export default function ContactsPage() {
             onClick={handleExportVCard}
             style={{
               padding: "10px 20px",
-              background: "#28A745", // Green for vCard export
+              background: "#28A745",
               color: "white",
               border: "none",
               borderRadius: "8px",
@@ -531,7 +515,6 @@ export default function ContactsPage() {
 }
 
 // --- ContactCard Component ---
-// (No changes needed here unless you want to add a visible "Google" label within the card)
 function ContactCard({ contact, accent, accentColor, isPinned, onTogglePin, onClick, cardBgColor, cardBorderColor, textColor, mutedTextColor, theme }) {
   const isDark = theme === 'dark';
   return (
@@ -599,21 +582,22 @@ function ContactCard({ contact, accent, accentColor, isPinned, onTogglePin, onCl
         </p>
       )}
 
-      {/* NEW: Data Source Label/Tooltip within ContactCard */}
+      {/* Data Source Label/Tooltip within ContactCard */}
       {contact.source === 'Google' && (
         <div
-          title="This contact is synced from Google Contacts" // Tooltip
+          title="This contact is synced from Google Contacts"
           style={{
-            marginTop: "8px", // Space from other info
+            marginTop: "8px",
             padding: "4px 8px",
-            backgroundColor: theme === 'dark' ? "#2A3A40" : "#E8F0FE", // Light blue/green for Google, theme adapted
-            color: theme === 'dark' ? "#8AB4F8" : "#1A73E8", // Google blue
+            backgroundColor: theme === 'dark' ? "#2A3A40" : "#E8F0FE",
+            color: theme === 'dark' ? "#8AB4F8" : "#1A73E8",
             borderRadius: "5px",
             fontSize: "0.75em",
             fontWeight: "bold",
             display: "flex",
             alignItems: "center",
             gap: "5px",
+            whiteSpace: "nowrap",
             border: `1px solid ${theme === 'dark' ? "#3C72B0" : "#AECBFA"}`
           }}
         >
@@ -705,10 +689,10 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
           </div>
         )}
 
-        {/* NEW: Data Source Label/Tooltip in Modal */}
+        {/* Source Label/Tooltip in Modal */}
         {contact.source === 'Google' && (
           <div
-            title="This contact is synced from Google Contacts" // Tooltip
+            title="This contact is synced from Google Contacts"
             style={{
               padding: "5px 10px",
               backgroundColor: theme === 'dark' ? "#2A3A40" : "#E8F0FE",
@@ -806,33 +790,41 @@ function ContactDetailsModal({ contact, onClose, accent, accentColor, generateVC
                 onMouseOut={(e) => (e.currentTarget.style.background = "#00AFF0")}
               >
                 Skype 📞
-                </a>
-              </div>
+              </a>
             </div>
-          )}
+          </div>
+        )}
 
-        {/* Conditional rendering for Email Action */}
-        {contact.email && contact.email !== "No Email" && (
+        {/* Conditional rendering for Email Action - MODIFIED */}
+        {contact.email && contact.email !== "No Email" ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "10px" }}>
             <p style={{ margin: "0", color: textColor }}><strong>Email:</strong> {contact.email}</p>
             <a
               href={`mailto:${contact.email}`}
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
                 padding: "8px 15px",
-                background: "#DC3545",
+                background: "#28A745", // Green color for email button
                 color: "white",
                 border: "none",
                 borderRadius: "5px",
                 cursor: "pointer",
                 textDecoration: "none",
                 transition: "background 0.2s",
+                textAlign: "center"
               }}
-              onMouseOver={(e) => (e.currentTarget.style.background = "#C82333")}
-              onMouseOut={(e) => (e.currentTarget.style.background = "#DC3545")}
+              onMouseOver={(e) => (e.currentTarget.style.background = "#218838")}
+              onMouseOut={(e) => (e.currentTarget.style.background = "#28A745")}
             >
-              Email {contact.name} 📧
+              Email {contact.name === "No Name" ? "Contact" : contact.name} 📧
             </a>
           </div>
+        ) : (
+          // If no email, display "No Email" as muted text, not a red link
+          <p style={{ margin: "0", color: mutedTextColor, fontStyle: "italic", textAlign: "center" }}>
+            No Email Address Available
+          </p>
         )}
 
         <p style={{ color: mutedTextColor }}><strong>Last Updated:</strong> {contact.lastUpdated !== "N/A" ? new Date(contact.lastUpdated).toLocaleString() : "N/A"}</p>
