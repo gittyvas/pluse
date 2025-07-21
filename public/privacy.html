@@ -35,7 +35,7 @@
   <p>When you use Pluse CRM, we may collect:</p>
   <ul>
     <li>Your Google account email and profile information (via OAuth)</li>
-    <li>Your contact data from Google Contacts (readonly access only)</li>
+    <li>Your contact data from Google Contacts and other contents you have interacted with on Google that have been automatically saved by Google. (readonly access only)</li>
     <li>Notes, reminders, and manual interactions you create in the app</li>
     <li>Anonymous usage data for improving user experience</li>
   </ul>
@@ -66,10 +66,16 @@
 
   <h2>6. Managing Your Data and Permissions</h2>
   <p>
-    You can revoke Pluse CRM's access to your Google account at any time through your Google Account settings here:<br />
+    You can revoke Pluse CRM's access to your Google account at any time through your Google Account settings:<br />
     <a href="https://myaccount.google.com/connections?filters=2" target="_blank" rel="noopener noreferrer">
       https://myaccount.google.com/connections?filters=2
     </a>
+  </p>
+  <p>
+    When you choose to disconnect your Google account or delete your Pluse CRM account, we immediately revoke both the <strong>Google access token</strong> and <strong>Google refresh token</strong> using Google's secure OAuth2 revocation API. This ensures our application is fully disconnected from your Google data.
+  </p>
+  <p>
+    We implement this revocation automatically from our backend and remove all OAuth tokens and associated credentials from our database. This action is triggered as part of the account deletion or disconnection process, and takes effect within seconds.
   </p>
   <p>
     To delete your account and associated notes/reminders, visit the "Settings" page in your dashboard.
@@ -83,6 +89,5 @@
   <p>
     We may update this policy to reflect changes in features or compliance requirements. When we do, we’ll update the "Updated" date at the top of this page.
   </p>
-
 </body>
 </html>
