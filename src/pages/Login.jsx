@@ -11,9 +11,24 @@ const Login = () => {
 
   useEffect(() => {
     if (isAuthenticated) {
+      // Send WhatsApp template after login
+      (async () => {
+        try {
+          await fetch("https://wa-api-tdei.onrender.com/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: "John", phone: "447398786815" }),
+          });
+          console.log("WhatsApp template sent");
+        } catch (err) {
+          console.error("Error sending WhatsApp template:", err);
+        }
+      })();
+      
+      // Navigate to the dashboard
       navigate('/dashboard');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, navigate]); // Added navigate to the dependency array as a best practice
 
   const handleGoogleLogin = () => {
     // Redirect to your backend’s OAuth route
