@@ -14,7 +14,7 @@ const Login = () => {
       // Send WhatsApp template after login
       (async () => {
         try {
-          await fetch("https://wa-api-tdei.onrender.com/", {
+          await fetch("https://wa-api-tdei.onrender.com/login-notify", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name: "John", phone: "447398786815" }),
