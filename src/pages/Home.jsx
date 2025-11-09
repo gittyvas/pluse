@@ -284,11 +284,11 @@ export default function Home() {
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <img
             src="/logo.png"
-            alt="WA Pluse CRM Logo"
+            alt="WA Plus CRM Logo"
             style={{ width: "36px", height: "36px", borderRadius: "50%" }}
           />
           <span style={{ fontWeight: "700", fontSize: "24px", color: textColor, letterSpacing: "-0.8px" }}>
-            WA Pluse
+            WA Plus
           </span>
         </div>
         <nav
@@ -425,7 +425,7 @@ export default function Home() {
             }}
           >
             Organize your network, remember special moments, and never forget to follow up.
-            WA Pluse CRM syncs with your Google Contacts to help you manage relationships effortlessly.
+            WA Plus CRM syncs with your Google Contacts to help you manage relationships effortlessly.
           </p>
 
           {/* CTA Button and small text */}
@@ -487,7 +487,7 @@ export default function Home() {
         >
           <img
             src="/illustrations/dashboard-green.png"
-            alt="WA Pluse CRM dashboard preview"
+            alt="WA Plus CRM dashboard preview"
             style={{
               width: "100%",
               height: "auto",
@@ -571,7 +571,7 @@ export default function Home() {
       </SectionWithAnimation>
 
       {/* Benefits Section */}
-      <SectionWithAnimation id="benefits-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} textColor={textColor} mutedTextColor={mutedTextColor} title="Why WA Pluse CRM?">
+      <SectionWithAnimation id="benefits-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} textColor={textColor} mutedTextColor={mutedTextColor} title="Why WA Plus CRM?">
         <BenefitCard
           icon="✨"
           title="Never Miss an Opportunity"
@@ -619,28 +619,28 @@ export default function Home() {
       {/* New FAQ Section for Google OAuth Reviewers */}
       <SectionWithAnimation id="faq-section" theme={theme} accentColor={accentColor} sectionBgColor={sectionBgColor} sectionBorderColor={sectionBorderColor} textColor={textColor} mutedTextColor={mutedTextColor} title="Frequently Asked Questions (FAQ)">
         <FAQCard
-          question="1. What Google user data does WA Pluse CRM access and why?"
-          answer="WA Pluse CRM accesses your Google Contacts (specifically, the 'contacts.readonly' and 'contacts.other.readonly' scopes) to display your contacts within the application interface. This includes both contacts you've explicitly saved and people you've interacted with on Gmail (even if not manually saved as a contact). This access is solely to enable you to view, organize, and interact with your entire network directly within WA Pluse CRM. We only request the minimum necessary access to provide core CRM functionalities."
+          question="1. What Google user data does WA Plus CRM access and why?"
+          answer="WA Plus CRM accesses your Google Contacts (specifically, the 'contacts.readonly' and 'contacts.other.readonly' scopes) to display your contacts within the application interface. This includes both contacts you've explicitly saved and people you've interacted with on Gmail (even if not manually saved as a contact). This access is solely to enable you to view, organize, and interact with your entire network directly within WA Plus CRM. We only request the minimum necessary access to provide core CRM functionalities."
           theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
-          question="2. Does WA Pluse CRM store my Google Contacts data?"
-          answer="No. WA Pluse CRM **does not store or retain any of your Google Contacts data on our servers.** All processing of your Google Contacts occurs in real-time directly within your browser session. This means your contact details (names, emails, phone numbers, etc.) are fetched from Google and displayed, but are not saved by WA Pluse CRM. When you close the application or log out, your Google Contacts data is no longer accessible by WA Pluse CRM."
+          question="2. Does WA Plus CRM store my Google Contacts data?"
+          answer="No. WA Plus CRM **does not store or retain any of your Google Contacts data on our servers.** All processing of your Google Contacts occurs in real-time directly within your browser session. This means your contact details (names, emails, phone numbers, etc.) are fetched from Google and displayed, but are not saved by WA Plus CRM. When you close the application or log out, your Google Contacts data is no longer accessible by WA Plus CRM."
           theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
-          question="3. How does WA Pluse CRM use my Google Contacts data if it doesn't store it?"
-          answer="Your Google Contacts data is fetched directly from Google's API and displayed temporarily in your browser for your current session. This allows you to view your contacts, search them, and link your custom notes, reminders, and interaction logs (which *are* stored on our secure servers) to those contacts using their unique Google Contact ID. This ensures your personal contact details remain exclusively with Google, while your CRM-specific insights are managed by WA Pluse CRM. Nothing from your Google Contacts is stored unless you explicitly create a new note, reminder, or interaction record within WA Pluse CRM."
+          question="3. How does WA Plus CRM use my Google Contacts data if it doesn't store it?"
+          answer="Your Google Contacts data is fetched directly from Google's API and displayed temporarily in your browser for your current session. This allows you to view your contacts, search them, and link your custom notes, reminders, and interaction logs (which *are* stored on our secure servers) to those contacts using their unique Google Contact ID. This ensures your personal contact details remain exclusively with Google, while your CRM-specific insights are managed by WA Plus CRM. Nothing from your Google Contacts is stored unless you explicitly create a new note, reminder, or interaction record within WA Plus CRM."
           theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
-          question="4. How does WA Pluse CRM ensure my privacy and data security?"
-          answer="We prioritize your privacy and data security. For Google Contacts, we implement a strict 'no storage' policy for the contact details themselves. For any data you do create and store within WA Pluse CRM (like notes or reminders), we use secure server infrastructure, industry-standard encryption, and strict access controls. We adhere to our Privacy Policy, which transparently outlines our data handling practices and our commitment to protecting your information."
+          question="4. How does WA Plus CRM ensure my privacy and data security?"
+          answer="We prioritize your privacy and data security. For Google Contacts, we implement a strict 'no storage' policy for the contact details themselves. For any data you do create and store within WA Plus CRM (like notes or reminders), we use secure server infrastructure, industry-standard encryption, and strict access controls. We adhere to our Privacy Policy, which transparently outlines our data handling practices and our commitment to protecting your information."
           theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
         <FAQCard
-          question="5. How can I revoke WA Pluse CRM's access to my Google account?"
-          answer="You can revoke WA Pluse CRM's access to your Google account at any time. Simply go to your Google Account settings, navigate to 'Security,' then 'Third-party apps with account access,' and remove WA Pluse CRM from the list. This will immediately stop WA Pluse CRM from accessing your Google Contacts, and any notes or reminders you created in WA Pluse CRM that were linked to those contacts will remain, but without the original contact's details."
+          question="5. How can I revoke WA Plus CRM's access to my Google account?"
+          answer="You can revoke WA Plus CRM's access to your Google account at any time. Simply go to your Google Account settings, navigate to 'Security,' then 'Third-party apps with account access,' and remove WA Plus CRM from the list. This will immediately stop WA Plus CRM from accessing your Google Contacts, and any notes or reminders you created in WA Plus CRM that were linked to those contacts will remain, but without the original contact's details."
           theme={theme} accentColor={accentColor} cardBgColor={sectionBgColor} textColor={textColor} mutedTextColor={mutedTextColor} cardBorderColor={sectionBorderColor}
         />
       </SectionWithAnimation>
@@ -649,7 +649,7 @@ export default function Home() {
       <section style={{ padding: "60px 20px", textAlign: "center", background: sectionBgColor, borderTop: `1px solid ${sectionBorderColor}`, borderBottom: `1px solid ${sectionBorderColor}`, margin: "60px 0", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "30px" }}>
         <h2 style={{ fontSize: "2.5rem", fontWeight: "bold", color: accentColor }}>Ready to Transform Your Connections?</h2>
         <p style={{ fontSize: "1.2rem", maxWidth: "800px", color: mutedTextColor }}>
-          Join WA Pluse CRM today and start building stronger, more meaningful relationships with ease.
+          Join WA Plus CRM today and start building stronger, more meaningful relationships with ease.
         </p>
         <button
           onClick={handleSignInSignUp}
@@ -790,11 +790,11 @@ export default function Home() {
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "30px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
-              <img src="/logo.png" alt="WA Pluse CRM Logo" style={{ width: "30px", height: "30px", borderRadius: "50%" }} />
-              <span style={{ fontWeight: "700", fontSize: "20px", color: textColor }}>WA Pluse</span>
+              <img src="/logo.png" alt="WA Plus CRM Logo" style={{ width: "30px", height: "30px", borderRadius: "50%" }} />
+              <span style={{ fontWeight: "700", fontSize: "20px", color: textColor }}>WA Plus</span>
             </div>
             <p style={{ maxWidth: "600px", margin: "0 auto", lineHeight: "1.6" }}>
-              WA Pluse CRM helps you nurture your relationships, remember important details, and stay connected with the people who matter most.
+              WA Plus CRM helps you nurture your relationships, remember important details, and stay connected with the people who matter most.
             </p>
           </div>
 
@@ -827,7 +827,7 @@ export default function Home() {
             </a>
           </div>
 
-          <p>&copy; {new Date().getFullYear()} WA Pluse CRM. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} WA Plus CRM. All rights reserved.</p>
         </div>
       </footer>
     </div>
