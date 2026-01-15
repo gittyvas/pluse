@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
 export default function ContactsPage() {
   const navigate = useNavigate();
   const { isAuthenticated, loading, logout, theme } = useAuth();

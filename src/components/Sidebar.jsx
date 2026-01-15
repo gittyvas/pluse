@@ -11,6 +11,7 @@ function Sidebar() {
     { name: 'Reminders', icon: Bell, path: '/reminders' },
     { name: 'Notes', icon: NotebookPen, path: '/notes' },
     { name: 'Search', icon: Search, path: '/search' },
+    { name: 'Mail', icon: Mail, path: '/mail' },
     { name: 'Profile', icon: User, path: '/profile' },
     { name: 'Settings', icon: Settings, path: '/settings' },
   ];

@@ -1,5 +1,3 @@
-// google-oauth-app/frontend/src/App.jsx
-
 import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -11,6 +9,7 @@ import NotesPage from "./pages/NotesPage";
 import SearchPage from "./pages/SearchPage";
 import ProfilePage from "./pages/ProfilePage";
 import SettingsPage from "./pages/SettingsPage";
+import MailPage from "./pages/MailPage";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import HomeRedirector from "./components/HomeRedirector";
@@ -78,6 +77,14 @@ function App() {
           element={
             <ProtectedRoute>
               <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/mail"
+          element={
+            <ProtectedRoute>
+              <MailPage />
             </ProtectedRoute>
           }
         />
