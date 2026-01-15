@@ -1,5 +1,3 @@
-// google-oauth-app/frontend/src/pages/Dashboard.jsx
-
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -124,9 +122,9 @@ export default function Dashboard() {
   const sidebarLinks = [
     { label: "Dashboard", icon: "🏠", path: "/dashboard" },
     { label: "Contacts", icon: "👥", path: "/contacts" },
+    { label: "Mail", icon: "📧", path: "/mail" },
     { label: "Reminders", icon: "⏰", path: "/reminders" },
     { label: "Notes", icon: "📝", path: "/notes" },
-    // { label: "Search", icon: "🔍", path: "/search" }, // CONFIRMED REMOVED
     { label: "Profile", icon: "👤", path: "/profile" },
     { label: "Settings", icon: "⚙️", path: "/settings" },
     { label: "Logout", icon: "🚪", action: handleLogout },

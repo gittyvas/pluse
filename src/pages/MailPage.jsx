@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import MailTable from "../components/MailTable";
 
 export default function MailPage() {
   const navigate = useNavigate();
@@ -9,11 +10,6 @@ export default function MailPage() {
   const bgColor = theme === "dark" ? "#1A222A" : "#F8FBF8";
   const textColor = theme === "dark" ? "#E0E6EB" : "#303030";
   const accentColor = "#4CAF50";
-  const cardBgColor =
-    theme === "dark"
-      ? "linear-gradient(145deg, #2A343D, #1F2830)"
-      : "linear-gradient(145deg, #FFFFFF, #F0F5F0)";
-  const cardBorderColor = theme === "dark" ? "#3A454F" : "#E0E5E0";
   const mutedTextColor = theme === "dark" ? "#A0A8B0" : "#606060";
 
   const [emails, setEmails] = useState([]);
@@ -26,7 +22,6 @@ export default function MailPage() {
 
   const fetchEmails = useCallback(async () => {
     if (!isAuthenticated || loading) {
-      console.log("MailPage: Not authenticated or auth still loading.");
       setDataLoading(false);
       return;
     }
@@ -34,7 +29,6 @@ export default function MailPage() {
     setError(null);
     setDataLoading(true);
     try {
-      console.log("MailPage: Fetching emails from backend.");
       const response = await fetch(`${BACKEND_API_BASE_URL}/api/emails`, {
         method: "GET",
         credentials: "include",
@@ -44,7 +38,6 @@ export default function MailPage() {
       });
 
       if (response.status === 401 || response.status === 403) {
-        console.error("MailPage: Session expired or invalid. Logging out.");
         logout();
         return;
       }
@@ -57,9 +50,7 @@ export default function MailPage() {
       }
 
       const data = await response.json();
-      console.log("MailPage: Fetched emails data:", data);
 
-      // Adjust processing based on your backend response structure
       const processedEmails = data.map((email, index) => ({
         id: email.id || index,
         subject: email.subject || "(No Subject)",
@@ -70,9 +61,7 @@ export default function MailPage() {
 
       setEmails(processedEmails);
       setEmailsLoadedSuccessfully(true);
-      console.log(`MailPage: Displaying ${processedEmails.length} emails.`);
     } catch (err) {
-      console.error("MailPage: Error fetching emails:", err);
       setError("Failed to load emails. Error: " + err.message);
       setEmailsLoadedSuccessfully(false);
     } finally {
@@ -274,48 +263,7 @@ export default function MailPage() {
             No emails found.
           </p>
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-              gap: "20px",
-            }}
-          >
-            {emails.map((email) => (
-              <div
-                key={email.id}
-                style={{
-                  border: `1px solid ${cardBorderColor}`,
-                  borderRadius: "8px",
-                  padding: "20px",
-                  background: cardBgColor,
-                  boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "8px",
-                }}
-              >
-                <h3 style={{ margin: 0, color: textColor }}>{email.subject}</h3>
-                <p style={{ margin: 0, fontSize: "14px", color: mutedTextColor }}>
-                  From: {email.from}
-                </p>
-                <p style={{ margin: 0, fontSize: "13px", color: mutedTextColor }}>
-                  {email.snippet}
-                </p>
-                {email.date && (
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "12px",
-                      color: mutedTextColor,
-                    }}
-                  >
-                    {new Date(email.date).toLocaleString()}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
+          <MailTable emails={emails} theme={theme} />
         )
       ) : (
         <div style={{ textAlign: "center", padding: "50px 0" }}>
