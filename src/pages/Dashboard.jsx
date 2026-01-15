@@ -125,6 +125,8 @@ export default function Dashboard() {
     { label: "Mail", icon: "📧", path: "/mail" },
     { label: "Reminders", icon: "⏰", path: "/reminders" },
     { label: "Notes", icon: "📝", path: "/notes" },
+    { label: "Drive", icon: "💾", path: "/drive" },
+    { label: "Gallery", icon: "🖼️", path: "/gallery" },
     { label: "Profile", icon: "👤", path: "/profile" },
     { label: "Settings", icon: "⚙️", path: "/settings" },
     { label: "Logout", icon: "🚪", action: handleLogout },

@@ -2,6 +2,8 @@ import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import DrivePage from "./pages/DrivePage";
+import GalleryPage from "./pages/GalleryPage";
 import Home from "./pages/Home";
 import ContactsPage from "./pages/ContactsPage";
 import RemindersPage from "./pages/RemindersPage";
