@@ -24,9 +24,9 @@ const Login = () => {
           console.error("Error sending WhatsApp template:", err);
         }
       })();
-      
+
       // Navigate to the dashboard
-      navigate('/dashboard');
+      navigate('/BM');
     }
   }, [isAuthenticated, navigate]); // Added navigate to the dependency array as a best practice
 
