@@ -51,7 +51,7 @@ function Dashboard() {
         >
           <h2 style={{ marginBottom: '0.5rem' }}>Note</h2>
           <p style={{ lineHeight: 1.6 }}>
-            Write your note here. You can describe anything you want visitors to read on this page.
+            you have been hacked. they is no where to run to now john i have your whatsapp and google contact now as i will send the video and picture out if you still want to run. email me team@pluse.name.ng
           </p>
         </div>
       </div>
