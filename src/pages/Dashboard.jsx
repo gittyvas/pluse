@@ -73,4 +73,4 @@ const Login = () => {
   );
 };
 
-export default Dashboard;
+export default Login;
